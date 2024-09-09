@@ -1,0 +1,31 @@
+{
+    "name": "INFOMPSV Project",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "remoteUser": "vscode",
+
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "haskell.haskell"
+        ],
+
+        "settings": {
+          // Haskell language extension.
+          "haskell.ghcupExecutablePath": "~/.ghcup/bin/ghcup",
+          "haskell.manageHLS": "GHCup",
+          "haskell.toolchain": {
+            "hls": "2.7.0.0",
+            "ghc": "9.4.8",
+            "cabal": "3.10.3.0",
+            "stack": null
+          },
+
+          // Editor.
+          "editor.tabSize": 2,
+          "editor.wordWrapColumn": 80
+        }
+      }
+    }
+}
