@@ -61,6 +61,7 @@ executable wlp-verifier
     other-modules:    Example
                     , Cli
                     , Util
+                    , Z3Util
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -72,6 +73,7 @@ executable wlp-verifier
                     , optparse-applicative
                     , pretty-simple
                     , mtl
+                    , time
 
     -- Directories containing source files.
     hs-source-dirs:   src

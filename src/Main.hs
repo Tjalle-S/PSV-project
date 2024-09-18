@@ -10,14 +10,28 @@ import Text.Pretty.Simple
       pPrintOpt,
       StringOutputStyle(EscapeNonPrintable) ) 
 import Control.Monad.IO.Class (MonadIO)
-import GCLParser.PrettyPrint (ppProgram2String)
+import Util
+import Data.Bool (bool)
+import Control.Monad (when)
+import Data.Time (getCurrentTime, diffUTCTime)
 
 main :: IO ()
 main = do
-  ArgData { .. } <- getOptions
+  args@ArgData{ .. } <- getOptions
   ast <- parseGCLfile fileName
-  either (const $ putStrLn $ "Parse error in file " ++ fileName) (putStrLn . ppProgram2String) ast
+  startTime <- getCurrentTime
+  (res, st, logs) <- runV args placeholderVerify
+  putStrLn $ bool "reject" "accept" res
+  when showStats (print $ stats st)
+  endTime <- getCurrentTime
+  let timeUsed = diffUTCTime endTime startTime
+  putStrLn $ "Total time used: " ++ show timeUsed
+  print logs
+  -- either (const $ putStrLn $ "Parse error in file " ++ fileName) (putStrLn . ppProgram2String) ast
   -- return ()
 
 pPrint :: (MonadIO m, Show a) => a -> m ()
 pPrint = pPrintOpt NoCheckColorTty (OutputOptions 2 120 True True 0 Nothing EscapeNonPrintable)
+
+placeholderVerify :: V Bool
+placeholderVerify = return True
