@@ -1,19 +1,39 @@
--- import GCLParser.Parser (parseGCLstring)
+module TreeBuilder (progToExec,progToExecMaxDepth) where
 import GCLParser.GCLDatatype
 import GHC.RTS.Flags (DebugFlags(stm))
 import System.Environment (getArgs)
+import Data.Maybe (catMaybes,isNothing)
 
 
 data ExecTree = Node ExecStmt [ExecTree] | Termination ExecStmt
+  deriving (Show)
 data ExecStmt = ESkip
               | EAssert Expr
               | EAssume Expr
               | EAssign     String           Expr
               | EAAssign    String           Expr   Expr
               | EDrefAssign String           Expr
+              | EBlock      
+  deriving (Show)
+
+progToExecMaxDepth :: Int -> Program -> ExecTree
+progToExecMaxDepth d  = cut d . progToExec
+
+cut :: Int -> ExecTree -> ExecTree
+cut d t = case cut' d t of
+            Nothing -> error "All execution paths are too long"
+            Just t -> t
+
+cut' :: Int -> ExecTree -> Maybe ExecTree
+cut' d t@(Termination _) | d<0 = Nothing
+                         | otherwise = Just t
+cut' d (Node s ts) | d<0 || length ts'==0= Nothing
+                   | otherwise           = Just (Node s ts')
+  where
+    ts' = catMaybes $ map (cut' (d-1)) ts
 
 progToExec :: Program -> ExecTree
-progToExec Program {stmt=s} =undefined
+progToExec Program {stmt=s} = stmtToExec s
 
 treeConcat :: ExecTree -> ExecTree -> ExecTree
 treeConcat (Node e ts) t2=Node e (map (\t -> treeConcat t t2) ts)
