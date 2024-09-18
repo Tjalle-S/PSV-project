@@ -62,6 +62,7 @@ executable wlp-verifier
                     , Cli
                     , Util
                     , Z3Util
+                    , Z3Instance
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
