@@ -2,24 +2,17 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Z3Instance () where
 
 import Z3.Monad ( MonadZ3(..) )
 
-import Control.Monad.State  ( StateT (..) )
-import Control.Monad.Writer ( WriterT(..) )
-import Control.Monad.RWS    ( RWST   (..) )
+import Control.Monad.Trans    ( MonadTrans(..) )
+import Control.Monad.IO.Class ( MonadIO        )
 
-instance MonadZ3 m => MonadZ3 (StateT s m) where
-  getSolver  = StateT $ \s -> (, s) <$> getSolver
-  getContext = StateT $ \s -> (, s) <$> getContext
-
-instance (MonadZ3 m, Monoid w) => MonadZ3 (WriterT w m) where
-  getSolver  = WriterT $ (, mempty) <$> getSolver
-  getContext = WriterT $ (, mempty) <$> getContext
-
-instance (MonadZ3 m, Monoid w) => MonadZ3 (RWST r w s m) where
-  getSolver  = RWST $ \_ s -> (, s, mempty) <$> getSolver
-  getContext = RWST $ \_ s -> (, s, mempty) <$> getContext
+instance (MonadZ3 m, MonadTrans t, Applicative (t m), Monad (t m), MonadIO (t m)) => MonadZ3 (t m) where
+  getSolver  = lift getSolver
+  getContext = lift getContext
+  
