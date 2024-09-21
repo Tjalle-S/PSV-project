@@ -1,4 +1,4 @@
-module TreeBuilder (progToExec,progToExecMaxDepth) where
+module TreeBuilder  where
 import GCLParser.GCLDatatype
 import GHC.RTS.Flags (DebugFlags(stm))
 import System.Environment (getArgs)

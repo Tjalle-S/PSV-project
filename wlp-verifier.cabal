@@ -60,6 +60,9 @@ executable wlp-verifier
     -- Modules included in this executable, other than Main.
     other-modules:    Example
                     , Cli
+                    , WLP
+                    , TreeBuilder
+                    , Algebra
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

@@ -11,13 +11,16 @@ import Text.Pretty.Simple
       StringOutputStyle(EscapeNonPrintable) ) 
 import Control.Monad.IO.Class (MonadIO)
 import GCLParser.PrettyPrint (ppProgram2String)
-import TreeBuilder (progToExec,progToExecMaxDepth)
+import GCLParser.GCLDatatype
+
+import TreeBuilder --(progToExec,progToExecMaxDepth)
+import WLP
 
 main :: IO ()
 main = do
   ArgData { .. } <- getOptions
   ast <- parseGCLfile fileName
-  either (const $ putStrLn $ "Parse error in file " ++ fileName) (pPrint . progToExecMaxDepth 20) ast
+  either (const $ putStrLn $ "Parse error in file " ++ fileName) (pPrint . (flip wlpTree) (LitB True) . progToExecMaxDepth 20) ast
   -- return ()
 
 pPrint :: (MonadIO m, Show a) => a -> m ()
