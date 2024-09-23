@@ -1,12 +1,65 @@
-module TreeBuilder  where
-import GCLParser.GCLDatatype
-import GHC.RTS.Flags (DebugFlags(stm))
-import System.Environment (getArgs)
-import Data.Maybe (catMaybes,isNothing)
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TypeFamilies #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 
+module TreeBuilder  where
+import GCLParser.GCLDatatype hiding (Expr(..))
+import qualified GCLParser.GCLDatatype as P
+import Data.Maybe (catMaybes,isNothing)
+import Data.Fix (Fix (..))
+import Data.Functor.Classes (Show1, Eq1)
+-- import Generic.Data (Generic(..), Generically(..), Generically1)
+import GHC.Generics (Generically1(..), Generic(..))
+-- import Data.Functor.Foldable.TH (makeBaseFunctor)
+import Data.Functor.Foldable (Recursive (cata))
+
+data ExprF a
+    = Var                String Type
+    | LitI               Int     
+    | LitB               Bool    
+    -- | LitNull
+    | ArrayElem          a a   
+    | OpNeg              a    
+    | BinopExpr          BinOp a a
+    | Forall             String a Type
+    | Exists             String a Type
+    | SizeOf             a
+    | RepBy              a a a
+    | Cond               a a a
+    -- | NewStore           Expr
+    -- | Dereference        String
+    deriving (Functor, Foldable, Traversable, Generic)
+
+testFoldF :: ExprF Int -> Int
+testFoldF (LitI i) = i
+testFoldF _ = undefined
+
+testFold :: Expr -> Int
+testFold = cata testFoldF
+
+foldExpr :: (ExprF a -> a) -> Expr -> a
+foldExpr = cata
+
+deriving via Generically1 ExprF instance Eq1   ExprF
+deriving via Generically1 ExprF instance Show1 ExprF
+
+type Expr = Fix ExprF
 
 data ExecTree = Node ExecStmt [ExecTree] | Termination ExecStmt
   deriving (Show)
+
+badExpr2goodExpr :: P.Expr -> Expr
+badExpr2goodExpr (P.LitB b)   = Fix (LitB b)
+badExpr2goodExpr (P.Parens e) = badExpr2goodExpr e
+badExpr2goodExpr (P.BinopExpr op l r) = Fix (BinopExpr op (badExpr2goodExpr l) (badExpr2goodExpr r))
+badExpr2goodExpr _ = undefined
+
+-- newtype Fix1 f = Fix { unFix :: f (Fix1 f) }
+
+
 data ExecStmt = ESkip
               | EAssert Expr
               | EAssume Expr
@@ -41,7 +94,7 @@ treeConcat (Termination e) t2= Node e [t2]
 
 stmtToExec :: Stmt -> ExecTree
 stmtToExec Skip = Termination ESkip
-stmtToExec (Assert e)= Termination (EAssert e)
+stmtToExec (Assert e)= Termination (EAssert $ badExpr2goodExpr e)
 stmtToExec (Assume e)= Termination (EAssume e)
 stmtToExec (Assign s e)= Termination (EAssign s e)
 stmtToExec (AAssign s i e)= Termination (EAAssign s i e)
