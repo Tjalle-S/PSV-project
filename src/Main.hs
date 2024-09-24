@@ -14,13 +14,14 @@ import Util
 import Data.Bool (bool)
 import Control.Monad (when)
 import Data.Time (getCurrentTime, diffUTCTime)
+-- import Data.Map (empty)
 
 main :: IO ()
 main = do
   args@ArgData{ .. } <- getOptions
   ast <- parseGCLfile fileName
   startTime <- getCurrentTime
-  (res, st, logs) <- runV args placeholderVerify
+  (res, st, logs) <- runV (ReaderData args) placeholderVerify
   putStrLn $ bool "reject" "accept" res
   when showStats (print $ stats st)
   endTime <- getCurrentTime

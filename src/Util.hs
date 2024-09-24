@@ -1,13 +1,19 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Util (VState(..), Stats(..), V, runV, GT, MonadG) where
+module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..)) where
 
 import Cli (ArgData)
-import Z3.Monad (Z3, evalZ3)
+import Z3.Monad (Z3, evalZ3, Symbol)
 import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadWriter (tell), modify, gets, ask)
+-- import Data.Map (Map)
 
 -- TODO: find better names.
+
+data ReaderData = ReaderData {
+  options :: ArgData
+-- , vars :: Map String Symbol
+}
 
 data VState = VState {
   stats :: Stats
@@ -26,9 +32,9 @@ data Stats = Stats {
 
 type Log = [String]
 
-type GT = RWST ArgData Log VState
+type GT = RWST ReaderData Log VState
 
-type MonadG = MonadRWS ArgData Log VState
+type MonadG = MonadRWS ReaderData Log VState
 
 test :: MonadG m => a -> m a
 test x = do
@@ -44,7 +50,7 @@ modState s = s { stats = (stats s) { inspectedPaths = 0 } }
 type V = GT Z3
 
 -- | Execute a computation in the verifier's monad.
-runV :: ArgData -> V a -> IO (a, VState, Log)
+runV :: ReaderData -> V a -> IO (a, VState, Log)
 runV args mx = evalZ3 $ runRWST mx args emptyState
 
 emptyState :: VState
