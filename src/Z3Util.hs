@@ -1,7 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Z3Util (expr2ast, isSatisfiable, isValid, Expr, ExprF(..)) where
@@ -10,13 +7,11 @@ import GCLParser.GCLDatatype (Type(..), BinOp(..), PrimitiveType (..))
 import Z3.Monad
 import Control.Monad (join)
 import Util (VState (..), Stats (..))
-import Generic.Data (Generic1, Generically1(..))
-import Data.Functor.Classes (Show1)
-import Data.Fix (Fix)
 import Data.Functor.Foldable (Recursive(cata))
 
 import Z3Instance ()
 import Control.Monad.State (MonadState, modify')
+import Expr (Expr, ExprF(..))
 
 -- | Transforms an expression into a Z3 AST.
 expr2ast :: (MonadZ3 m, MonadState VState m) => Expr -> m AST
@@ -37,28 +32,6 @@ isValid ast = test . fst <$ (assert =<< mkNot ast) <*> getModel
     test _     = False
 
 -- ============================================================
-
-data ExprF a
-    = Var                String Type
-
-    | LitI               Int
-    | LitB               Bool
-
-    | ArrayElem          a a
-    | RepBy              a a a
-    | SizeOf             String
-
-    | OpNeg              a
-    | BinopExpr          BinOp a a
-
-    | Forall             String a Type
-    | Exists             String a Type
-
-    | Cond               a a a
-    deriving (Functor, Generic1)
-    deriving Show1 via Generically1 ExprF
-
-type Expr = Fix ExprF
 
 expr2astF :: (MonadZ3 m, MonadState VState m) => ExprF (m AST) -> m AST
 expr2astF (Var name typ)       = incrSize >> makeVar name typ
@@ -81,8 +54,8 @@ expr2astF (ArrayElem a i  )    = join (mkSelect <$> a <*> i)
 expr2astF (RepBy     a i e)    = join (mkStore  <$> a <*> i <*> e)
 expr2astF (SizeOf    a    )    = mkIntVar =<< mkStringSymbol ('#' : a) -- Why does the datatype have the array as an expression instead of a string?
 
-expr2astF (Forall name e typ)  = mkQuantifier mkForall name typ e
-expr2astF (Exists name e typ)  = mkQuantifier mkExists name typ e
+expr2astF (Forall name e)  = mkQuantifier mkForall name e
+expr2astF (Exists name e)  = mkQuantifier mkExists name e
 
 makeVar :: MonadZ3 m => String -> Type -> m AST
 makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
@@ -117,10 +90,10 @@ mkOp Alias            = error "Not implemented" -- Reference equality.
 uncurryList :: ([a] -> b) -> a -> a -> b
 uncurryList op l r = op [l, r]
 
-mkQuantifier :: MonadZ3 m => ([Pattern] -> [Symbol] -> [Sort] -> AST -> m AST) -> String -> Type -> m AST -> m AST
-mkQuantifier q name typ e = do
+mkQuantifier :: MonadZ3 m => ([Pattern] -> [Symbol] -> [Sort] -> AST -> m AST) -> String -> m AST -> m AST
+mkQuantifier q name e = do
   symb <- mkStringSymbol name
-  sort <- makeSort typ
+  sort <- mkIntSort
   q [] [symb] [sort] =<< e
 
 incrSize :: (MonadState VState m) => m ()

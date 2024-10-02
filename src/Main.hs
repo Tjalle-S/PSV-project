@@ -47,7 +47,6 @@ testExpr = Fix $ Forall "x"
             (Fix $ BinopExpr Implication 
               (Fix $ BinopExpr GreaterThan (Fix $ Var "x" (PType PTInt)) (Fix $ LitI 1))   -- x > 1
               (Fix $ BinopExpr GreaterThan (Fix $ Var "x" (PType PTInt)) (Fix $ LitI 0)))  -- x > 0
-            (PType PTInt)
 
 testFull =  do
   (res, stat) <- evalZ3 $ runStateT (isValid =<< expr2ast testExpr) VState {
