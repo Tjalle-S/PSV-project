@@ -73,6 +73,10 @@ executable wlp-verifier
                     , GCLparser
                     , optparse-applicative
                     , pretty-simple
+                    , recursion-schemes
+                    , data-fix
+                    , generic-data
+                    , mtl
 
     -- Directories containing source files.
     hs-source-dirs:   src

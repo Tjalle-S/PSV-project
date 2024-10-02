@@ -1,0 +1,8 @@
+// This returns a copy of an array `a`, but in reverse order.
+reverse(a:[]int | b:[]int) {
+  assume (0 <= #a) && (#a = #b) ;
+  var i:int {
+      i := 0
+  } ;
+  assert forall i :: ((0<=i) && (i<#a)) ==> (a[i] = b[(#a-1)-i])
+}
