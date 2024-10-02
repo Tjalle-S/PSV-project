@@ -1,31 +1,46 @@
 module WLP (wlpTree) where
 import TreeBuilder --(ExecStmt)
-import GCLParser.GCLDatatype
+import GCLParser.GCLDatatype hiding (Expr(..))
+import qualified GCLParser.GCLDatatype as P
 import Algebra
 import Data.Functor.Classes (eq1)
+import Data.Functor.Foldable (Recursive (cata))
+import Data.Fix (Fix (..))
 
 wlpTree :: ExecTree -> Expr -> Expr
 wlpTree (Node s ts) q = wlpStmt s wlpChildrenCombined
   where
     wlpChildren = map (\t -> wlpTree t q) ts
-    wlpChildrenCombined = foldr1 (BinopExpr And) wlpChildren
+    wlpChildrenCombined = foldr1 (\a b -> Fix $ BinopExpr And a b) wlpChildren
 wlpTree (Termination s) q = wlpStmt s q
 
 
 wlpStmt :: ExecStmt -> Expr -> Expr
 wlpStmt ESkip = id
-wlpStmt (EAssert e1) = BinopExpr And e1
-wlpStmt (EAssume e1) = BinopExpr Implication e1
-wlpStmt (EAssign s e) = foldExpr (defaultAlgebra {var=replaceVar s e})
-wlpStmt (EAAssign s i e) = foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
+wlpStmt (EAssert e1) = Fix . BinopExpr And e1
+wlpStmt (EAssume e1) = Fix . BinopExpr Implication e1 
+wlpStmt (EAssign s e) = cata f--foldExpr (defaultAlgebra {var=replaceVar s e})
+  where
+    f :: ExprF Expr -> Expr
+    f e'@(Var s' t) = replaceVar s (Fix e') s--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f e = Fix e
+wlpStmt (EAAssign s (Fix i) e) = cata f --foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
+  where
+    f :: ExprF Expr -> Expr
+    f e'@(Var s' t) = replaceVar s' (Fix $ RepBy (Fix $ Var s t) (Fix i) (Fix e')) s--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f e = Fix e
 wlpStmt (EDrefAssign s e) = undefined --Is optional
 
-replace :: String -> Expr -> Expr -> Expr
-replace s e = foldExpr (defaultAlgebra {var=replaceVar s e})
-
-replaceVar :: [Char] -> Expr -> [Char] -> Expr
-replaceVar s1 e s2 | s1==s2 = e
-                   | otherwise = Var s2
+--replace :: String -> Expr -> Expr -> Expr
+--replace s e1 e2 = cata f e2
+--  where
+--    f :: ExprF Expr -> Expr
+--    f (Var s' t) =  replaceVar s' e1 s--foldExpr (defaultAlgebra {var=replaceVar s e})
+--    f e' = Fix e'
+--
+--replaceVar :: [Char] -> Expr -> [Char] -> Expr
+--replaceVar s1 e s2 | s1==s2 = e
+--                   | otherwise = Fix $ Var s2 (PType PTInt) --This is temporary
 
 -- replace s1 e1 (Var s2) | s1==s2 = e1
 --                        | otherwise = Var s2
