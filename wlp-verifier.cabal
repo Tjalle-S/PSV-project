@@ -63,6 +63,9 @@ executable wlp-verifier
                     , WLP
                     , TreeBuilder
                     , Algebra
+                    , Util
+                    , Z3Util
+                    , Z3Instance
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -73,10 +76,11 @@ executable wlp-verifier
                     , GCLparser
                     , optparse-applicative
                     , pretty-simple
-                    , recursion-schemes
-                    , data-fix
-                    , generic-data
                     , mtl
+                    , time
+                    , data-fix
+                    , recursion-schemes
+                    , generic-data
 
     -- Directories containing source files.
     hs-source-dirs:   src
