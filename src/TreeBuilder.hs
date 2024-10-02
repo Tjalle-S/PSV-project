@@ -27,7 +27,7 @@ data ExprF a
     | BinopExpr          BinOp a a
     | Forall             String a Type
     | Exists             String a Type
-    | SizeOf             a
+    | SizeOf             String
     | RepBy              a a a
     | Cond               a a a
     -- | NewStore           Expr
@@ -87,7 +87,11 @@ replace s e1 e2 = cata f e2
 replaceVar :: [Char] -> Expr -> [Char] -> Expr
 replaceVar s1 e s2 | s1==s2 = e
                    | otherwise = Fix $ Var s2 (PType PTInt) --This is temporary
-                
+
+getVarStr :: P.Expr -> String
+getVarStr (P.Var s) = s
+getVarStr (P.RepBy e _ _) = getVarStr e
+getVarStr e = error $ show e ++ " is not an array"
 
 badExpr2goodExpr :: P.Expr -> State [(String,Type)] Expr
 badExpr2goodExpr (P.Var s)            = do
@@ -117,8 +121,7 @@ badExpr2goodExpr (P.Exists s e)       = do
                                           s' <- addVar (s,PType PTInt)--For now I will assume that it is always an integer
                                           return $Fix (Exists s' (replace s (Fix $ Var s' (PType PTInt)) e') (PType PTInt))
 badExpr2goodExpr (P.SizeOf e)         = do
-                                          e' <- badExpr2goodExpr e
-                                          return $Fix (SizeOf e')
+                                          return $Fix (SizeOf $ getVarStr e)
 badExpr2goodExpr (P.RepBy e1 e2 e3)   = do
                                           e1' <- badExpr2goodExpr e1
                                           e2' <- badExpr2goodExpr e2
