@@ -14,7 +14,11 @@ import Util
 import Data.Bool (bool)
 import Control.Monad (when)
 import Data.Time (getCurrentTime, diffUTCTime)
--- import Data.Map (empty)
+import Data.Fix (Fix (Fix))
+import Z3Util (Expr, ExprF (..), expr2ast, isValid)
+import GCLParser.GCLDatatype (PrimitiveType(..), Type (..), BinOp (Implication, GreaterThan))
+import Z3.Monad (evalZ3)
+import Control.Monad.State (StateT (runStateT))
 
 main :: IO ()
 main = do
@@ -36,3 +40,22 @@ pPrint = pPrintOpt NoCheckColorTty (OutputOptions 2 120 True True 0 Nothing Esca
 
 placeholderVerify :: V Bool
 placeholderVerify = return True
+
+-- forall x . x > 1 => x > 0
+testExpr :: Expr
+testExpr = Fix $ Forall "x" 
+            (Fix $ BinopExpr Implication 
+              (Fix $ BinopExpr GreaterThan (Fix $ Var "x" (PType PTInt)) (Fix $ LitI 1))   -- x > 1
+              (Fix $ BinopExpr GreaterThan (Fix $ Var "x" (PType PTInt)) (Fix $ LitI 0)))  -- x > 0
+            (PType PTInt)
+
+testFull =  do
+  (res, stat) <- evalZ3 $ runStateT (isValid =<< expr2ast testExpr) VState {
+    stats = Stats {
+      inspectedPaths  = 0
+    , infeasiblePaths = 0
+    , formulaSize     = 0
+    }
+  }
+  print res
+  print stat

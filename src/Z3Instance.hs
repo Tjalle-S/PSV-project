@@ -15,4 +15,3 @@ import Control.Monad.IO.Class ( MonadIO        )
 instance (MonadZ3 m, MonadTrans t, Applicative (t m), Monad (t m), MonadIO (t m)) => MonadZ3 (t m) where
   getSolver  = lift getSolver
   getContext = lift getContext
-  

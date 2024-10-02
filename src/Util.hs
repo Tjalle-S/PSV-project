@@ -4,8 +4,8 @@
 module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..)) where
 
 import Cli (ArgData)
-import Z3.Monad (Z3, evalZ3, Symbol)
-import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadWriter (tell), modify, gets, ask)
+import Z3.Monad (Z3, evalZ3)
+import Control.Monad.RWS (RWST (runRWST), MonadRWS)
 -- import Data.Map (Map)
 
 -- TODO: find better names.
@@ -35,16 +35,6 @@ type Log = [String]
 type GT = RWST ReaderData Log VState
 
 type MonadG = MonadRWS ReaderData Log VState
-
-test :: MonadG m => a -> m a
-test x = do
-  y <- ask
-  tell ["hello log!"]
-  modify modState
-  z <- gets (inspectedPaths . stats)
-  undefined
-
-modState s = s { stats = (stats s) { inspectedPaths = 0 } }
 
 -- | Monad type for computations using Z3.
 type V = GT Z3
