@@ -81,12 +81,12 @@ replace :: String -> Expr -> Expr -> Expr
 replace s e1 e2 = cata f e2
   where
     f :: ExprF Expr -> Expr
-    f (Var s' t) =  replaceVar s' e1 s--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f (Var s' t) =  replaceVar s' e1 s t --foldExpr (defaultAlgebra {var=replaceVar s e})
     f e' = Fix e'
 
-replaceVar :: [Char] -> Expr -> [Char] -> Expr
-replaceVar s1 e s2 | s1==s2 = e
-                   | otherwise = Fix $ Var s2 (PType PTInt) --This is temporary
+replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
+replaceVar s1 e s2 t| s1==s2 = e
+                    | otherwise = Fix $ Var s2 t 
                 
 
 badExpr2goodExpr :: P.Expr -> State [(String,Type)] Expr
