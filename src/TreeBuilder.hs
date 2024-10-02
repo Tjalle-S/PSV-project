@@ -1,19 +1,18 @@
-module TreeBuilder where
+module TreeBuilder (
+  ExecTree(..)
+, ExecStmt(..)
+, replaceVar
+, badExpr2goodExpr
+, progToExec
+, progToExecMaxDepth) where
 
 import GCLParser.GCLDatatype hiding (Expr(..))
 import qualified GCLParser.GCLDatatype as P
 import Data.Maybe (mapMaybe)
-import Control.Monad.State.Lazy
+import Control.Monad.State
 import Data.Functor.Foldable (Recursive (cata))
 import Expr ( Expr, ExprF(..) )
 import Data.Fix(Fix(Fix))
-
-testFoldF :: ExprF Int -> Int
-testFoldF (LitI i) = i
-testFoldF _ = undefined
-
-testFold :: Expr -> Int
-testFold = cata testFoldF
 
 data ExecTree = Node ExecStmt [ExecTree] | Termination ExecStmt
   deriving (Show)
@@ -151,7 +150,4 @@ stmtToExec (While e s)      = do
 stmtToExec (Block v s)          = do
                                     mapM_ addVar $ varDeclsToTuples v
                                     stmtToExec s--Still has to replace all the occurences of the changed variables
-stmtToExec (TryCatch {})     = undefined
-
-replicateConcat :: Int -> [a] -> [a]
-replicateConcat i = concat . replicate i
+stmtToExec (TryCatch {})     = error "Not implemented" -- Exception handling.
