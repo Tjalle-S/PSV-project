@@ -13,6 +13,7 @@ import Control.Monad.State
 import Data.Functor.Foldable (Recursive (cata))
 import Expr ( Expr, ExprF(..) )
 import Data.Fix(Fix(Fix))
+import Util (optionalError)
 
 data ExecTree = Node ExecStmt [ExecTree] | Termination ExecStmt
   deriving (Show)
@@ -65,7 +66,7 @@ badExpr2goodExpr :: P.Expr -> State [(String,Type)] Expr
 badExpr2goodExpr (P.Var s)            = makeVar s <$> findType s
 badExpr2goodExpr (P.LitI i)           = return $ Fix (LitI i)
 badExpr2goodExpr (P.LitB b)           = return $ Fix (LitB b)
-badExpr2goodExpr P.LitNull            = error "Not implemented" -- Pointer types.
+badExpr2goodExpr P.LitNull            = optionalError -- Pointer types.
 badExpr2goodExpr (P.Parens e)         = badExpr2goodExpr e
 badExpr2goodExpr (P.ArrayElem e1 e2)  = Fix <$> (ArrayElem <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2)
 badExpr2goodExpr (P.OpNeg e)          = Fix . OpNeg <$> badExpr2goodExpr e
@@ -75,8 +76,8 @@ badExpr2goodExpr (P.Exists s e)       = makeQuantifier Forall s <$> addVar (s, P
 badExpr2goodExpr (P.SizeOf e)         = return $ Fix (SizeOf $ getVarStr e)
 badExpr2goodExpr (P.RepBy e1 e2 e3)   = Fix <$> (RepBy <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2 <*> badExpr2goodExpr e3)
 badExpr2goodExpr (P.Cond e1 e2 e3)    = Fix <$> (Cond <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2 <*> badExpr2goodExpr e3)
-badExpr2goodExpr (P.NewStore _)       = error "Not implemented" -- Pointer types.
-badExpr2goodExpr (P.Dereference _)    = error "Not implemented" -- Pointer types.
+badExpr2goodExpr (P.NewStore _)       = optionalError -- Pointer types.
+badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
 
 
 data ExecStmt = ESkip
@@ -150,4 +151,4 @@ stmtToExec (While e s)      = do
 stmtToExec (Block v s)          = do
                                     mapM_ addVar $ varDeclsToTuples v
                                     stmtToExec s--Still has to replace all the occurences of the changed variables
-stmtToExec (TryCatch {})     = error "Not implemented" -- Exception handling.
+stmtToExec (TryCatch {})     = optionalError -- Exception handling.

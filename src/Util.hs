@@ -1,11 +1,12 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
-module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..)) where
+module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optionalError, incrNumPaths) where
 
 import Cli (ArgData)
 import Z3.Monad (Z3, evalZ3)
-import Control.Monad.RWS (RWST (runRWST), MonadRWS)
+import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify')
 -- import Data.Map (Map)
 
 -- TODO: find better names.
@@ -51,3 +52,10 @@ emptyState = VState {
   , formulaSize     = 0
   }
 }
+
+-- | An error message to show that a bonus feature is not yet implemented.
+optionalError :: a
+optionalError = error "Not implemented: optional assignment"
+
+incrNumPaths :: MonadState VState m => m ()
+incrNumPaths = modify' $ \v@VState { stats = s@Stats { inspectedPaths } } -> v { stats = s { inspectedPaths = inspectedPaths + 1 } }

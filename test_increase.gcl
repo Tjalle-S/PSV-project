@@ -1,0 +1,13 @@
+// Make sure r is greater than x, and even. (Is this even possible? Cannot really check if even or not.)
+increase(x:int | r:int) {
+  assume x > 0;
+  if (((x / 2) * 2)) = x then // x is even
+  {
+    r := x * 2
+  }
+  else 
+  {
+    r := x + 1
+  };
+  assert (r > x) && (((r / 2) * 2) = r)
+}

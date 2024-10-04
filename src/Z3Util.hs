@@ -1,17 +1,20 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns   #-}
 
-module Z3Util (expr2ast, isSatisfiable, isValid, Expr, ExprF(..)) where
+module Z3Util (expr2ast, isSatisfiable, isValid, getValidityCounterExample) where
 
-import GCLParser.GCLDatatype (Type(..), BinOp(..), PrimitiveType (..))
+import GCLParser.GCLDatatype ( Type(..), BinOp(..), PrimitiveType (..) )
+import Expr ( Expr, ExprF(..) )
+
 import Z3.Monad
-import Control.Monad (join)
-import Util (VState (..), Stats (..))
-import Data.Functor.Foldable (Recursive(cata))
-
 import Z3Instance ()
-import Control.Monad.State (MonadState, modify')
-import Expr (Expr, ExprF(..))
+
+import Control.Monad ( join )
+import Control.Monad.State ( MonadState, modify' )
+import Data.Functor.Foldable ( Recursive(cata) )
+
+import Util ( VState (..), Stats (..), optionalError )
+
 
 -- | Transforms an expression into a Z3 AST.
 expr2ast :: (MonadZ3 m, MonadState VState m) => Expr -> m AST
@@ -30,6 +33,15 @@ isValid ast = test . fst <$ (assert =<< mkNot ast) <*> getModel
   where
     test Unsat = True
     test _     = False
+
+-- | Attempts to find a counterexample to show the assertion is not valid.
+getValidityCounterExample :: MonadZ3 m => AST -> m (Maybe String)
+getValidityCounterExample ast = do
+  assert =<< mkNot ast
+  (_res, model) <- getModel
+  case model of
+    Nothing -> return Nothing
+    Just m  -> Just <$> showModel m
 
 -- ============================================================
 
@@ -63,7 +75,7 @@ makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
 makeSort :: MonadZ3 m => Type -> m Sort
 makeSort (PType t) = makePrimSort t
 makeSort (AType t) = join (mkArraySort <$> mkIntSort <*> makePrimSort t)
-makeSort RefType   = error "Not implemented" -- Pointer types.
+makeSort RefType   = optionalError -- Pointer types.
 
 makePrimSort :: MonadZ3 m => PrimitiveType -> m Sort
 makePrimSort PTInt  = mkIntSort
@@ -85,7 +97,7 @@ mkOp Minus            = uncurryList mkSub
 mkOp Multiply         = uncurryList mkMul
 mkOp Divide           = mkDiv
 
-mkOp Alias            = error "Not implemented" -- Reference equality.
+mkOp Alias            = optionalError -- Reference equality.
 
 uncurryList :: ([a] -> b) -> a -> a -> b
 uncurryList op l r = op [l, r]
