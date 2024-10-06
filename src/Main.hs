@@ -14,12 +14,11 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Util
 import Control.Monad (when)
 import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
-import Data.Fix (Fix (Fix))
 import Z3Util (expr2ast, getValidityCounterExample)
 import GCLParser.GCLDatatype (PrimitiveType(..), Type (..), BinOp (Implication, GreaterThan))
 import Z3.Monad (evalZ3, assert, getModel, showModel, mkNot, MonadZ3)
 import Control.Monad.State (StateT (runStateT), MonadState)
-import Expr (Expr, ExprF(..), prettyishPrintExpr)
+import Expr (Expr (..), prettyishPrintExpr)
 import WLP (makeWLPs)
 import TreeBuilder (progToExec)
 
@@ -30,7 +29,7 @@ main = do
   (_, timeUsed) <- withTimer $ do
     let wlp = case ast of
               Left  _err -> error "Parse error"
-              Right ast' -> makeWLPs (Fix $ LitB True) (progToExec ast')
+              Right ast' -> makeWLPs (LitB True) (progToExec ast')
 
     (res, st, logs) <- runV (ReaderData args) (testAllPaths wlp)
     putStr res
@@ -70,10 +69,10 @@ withTimer ma = do
 
 -- forall x . x > 1 => x > 0
 testExpr :: Expr
-testExpr = Fix $ Forall "x" 
-            (Fix $ BinopExpr Implication 
-              (Fix $ BinopExpr GreaterThan (Fix $ Var "x" (PType PTInt)) (Fix $ LitI 0))   -- x > 1
-              (Fix $ BinopExpr GreaterThan (Fix $ Var "x" (PType PTInt)) (Fix $ LitI 1)))  -- x > 0
+testExpr = Forall "x" 
+            (BinopExpr Implication 
+              (BinopExpr GreaterThan (Var "x" (PType PTInt)) (LitI 0))   -- x > 1
+              (BinopExpr GreaterThan (Var "x" (PType PTInt)) (LitI 1)))  -- x > 0
 
 testSatisfiable ast = maybe (return "No model") showModel . snd =<< ((assert =<< mkNot ast) >> getModel)
 

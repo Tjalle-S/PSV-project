@@ -46,28 +46,28 @@ getValidityCounterExample ast = do
 -- ============================================================
 
 expr2astF :: (MonadZ3 m, MonadState VState m) => ExprF (m AST) -> m AST
-expr2astF (Var name typ)       = incrSize >> makeVar name typ
+expr2astF (VarF name typ)       = incrSize >> makeVar name typ
 
-expr2astF (LitI i)             = incrSize >> mkIntNum i
-expr2astF (LitB b)             = incrSize >> mkBool b
+expr2astF (LitIF i)             = incrSize >> mkIntNum i
+expr2astF (LitBF b)             = incrSize >> mkBool b
 
-expr2astF (OpNeg me)           = do
+expr2astF (OpNegF me)           = do
   e    <- me
   sort <- getSortKind =<< getSort e
   case sort of
     Z3_BOOL_SORT -> mkNot        e
     Z3_INT_SORT  -> mkUnaryMinus e
     other        -> error ("Panic! Cannot negate type " ++ show other) -- Should never occur.
-expr2astF (BinopExpr op e1 e2) = join (mkOp op <$> e1 <*> e2)
+expr2astF (BinopExprF op e1 e2) = join (mkOp op <$> e1 <*> e2)
 
-expr2astF (Cond c t f)         = join (mkIte <$> c <*> t <*> f)
+expr2astF (CondF c t f)         = join (mkIte <$> c <*> t <*> f)
 
-expr2astF (ArrayElem a i  )    = join (mkSelect <$> a <*> i)
-expr2astF (RepBy     a i e)    = join (mkStore  <$> a <*> i <*> e)
-expr2astF (SizeOf    a    )    = mkIntVar =<< mkStringSymbol ('#' : a) -- Why does the datatype have the array as an expression instead of a string?
+expr2astF (ArrayElemF a i  )    = join (mkSelect <$> a <*> i)
+expr2astF (RepByF     a i e)    = join (mkStore  <$> a <*> i <*> e)
+expr2astF (SizeOfF    a    )    = mkIntVar =<< mkStringSymbol ('#' : a)
 
-expr2astF (Forall name e)  = mkQuantifier mkForall name e
-expr2astF (Exists name e)  = mkQuantifier mkExists name e
+expr2astF (ForallF name e)      = mkQuantifier mkForall name e
+expr2astF (ExistsF name e)      = mkQuantifier mkExists name e
 
 makeVar :: MonadZ3 m => String -> Type -> m AST
 makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
