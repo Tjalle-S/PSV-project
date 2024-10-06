@@ -2,7 +2,8 @@ module TreeBuilder (
   replaceVar
 , badExpr2goodExpr
 , progToExec
-, progToExecMaxDepth) where
+, progToExecMaxDepth
+, stmtToExec) where --The last one should be temporarily
 
 import GCLParser.GCLDatatype hiding (Expr(..))
 import qualified GCLParser.GCLDatatype as P
@@ -130,7 +131,7 @@ stmtToExec (While e s)      = do
                                     s'<- stmtToExec s
                                     return $ whileExec e' s'
   where
-    whileExec cond body = Node ESkip [Node (EAssume cond) [treeConcat body (whileExec cond body),Termination (EAssume $ OpNeg cond)]]
+    whileExec cond body = Node ESkip [Node (EAssume cond) [treeConcat body (whileExec cond body)],Termination (EAssume $ OpNeg cond)]
 stmtToExec (Block v s)          = do
                                     mapM_ addVar $ varDeclsToTuples v
                                     stmtToExec s--Still has to replace all the occurences of the changed variables

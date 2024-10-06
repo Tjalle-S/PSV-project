@@ -31,7 +31,7 @@ main = do
               Left  _err -> error "Parse error"
               Right ast' -> makeWLPs (LitB True) (progToExecMaxDepth maxLength ast')
 
-    -- putStrLn $ unlines (map prettyishPrintExpr wlp) -- For debugging only. Be careful, as this prints all paths, even if not inspected.
+    putStrLn $ unlines (map prettyishPrintExpr wlp) -- For debugging only. Be careful, as this prints all paths, even if not inspected.
 
     (res, st, logs) <- runV (ReaderData args) (testAllPaths wlp)
     putStr res
