@@ -10,7 +10,7 @@ import Z3.Monad
 run :: IO ()
 run = evalZ3 script >>= putStrLn
 
-script :: Z3 String
+script :: (MonadZ3 m, MonadFail m) => m String
 script = do
   -- newtype Tup = Tup { arg1 :: Int, arg2 :: Int }
   intSort <- mkIntSort

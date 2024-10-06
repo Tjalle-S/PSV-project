@@ -1,12 +1,13 @@
 module WLP (wlpTree,wlpStmt) where
 import TreeBuilder --(ExecStmt)
 import GCLParser.GCLDatatype hiding (Expr(..))
-import qualified GCLParser.GCLDatatype as P
-import Algebra
-import Data.Functor.Classes (eq1)
 import Data.Functor.Foldable (Recursive (cata))
 import Data.Fix (Fix (..))
+<<<<<<< HEAD
 import Control.Monad.State.Lazy
+=======
+import Expr ( Expr, ExprF(..) )
+>>>>>>> main
 
 wlpTree :: ExecTree -> Expr -> Expr
 wlpTree (Node s ts) q = wlpStmt s wlpChildrenCombined
