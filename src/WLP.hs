@@ -32,7 +32,7 @@ wlpStmt (EAssume e1) = BinopExpr Implication e1
 wlpStmt (EAssign s e) = cata f--foldExpr (defaultAlgebra {var=replaceVar s e})
   where
     f :: ExprF Expr -> Expr
-    f e'@(VarF s' t) = replaceVar s e s' t--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f e'@(VarF s' t) = replaceVar s (embed e') s' t--foldExpr (defaultAlgebra {var=replaceVar s e})
     f e = embed e
 wlpStmt (EAAssign s i e) = cata f --foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
   where
