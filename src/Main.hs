@@ -20,7 +20,7 @@ import Z3.Monad (evalZ3, assert, getModel, showModel, mkNot, MonadZ3)
 import Control.Monad.State (StateT (runStateT), MonadState)
 import Expr (Expr (..), prettyishPrintExpr)
 import WLP (makeWLPs)
-import TreeBuilder (progToExec)
+import TreeBuilder (progToExec, progToExecMaxDepth)
 
 main :: IO ()
 main = do
@@ -29,9 +29,9 @@ main = do
   (_, timeUsed) <- withTimer $ do
     let wlp = case ast of
               Left  _err -> error "Parse error"
-              Right ast' -> makeWLPs (LitB True) (progToExec ast')
+              Right ast' -> makeWLPs (LitB True) (progToExecMaxDepth maxLength ast')
 
-    putStrLn $ unlines (map prettyishPrintExpr wlp) -- For debugging only. Be careful, as this prints all paths, even if not inspected.
+    -- putStrLn $ unlines (map prettyishPrintExpr wlp) -- For debugging only. Be careful, as this prints all paths, even if not inspected.
 
     (res, st, logs) <- runV (ReaderData args) (testAllPaths wlp)
     putStr res
