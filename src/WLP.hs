@@ -3,7 +3,7 @@ module WLP (wlpTree, makeWLPs) where
 import Expr ( Expr (..), ExprF(..) )
 import Data.Fix ( Fix (..) )
 import GCLParser.GCLDatatype ( BinOp(..) )
-import TreeBuilder ( ExecStmt(..), ExecTree(..), replaceVar )
+import TreeBuilder ( ExecStmt(..), ExecTree(..), ExecTreeF(..), replaceVar )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
@@ -11,8 +11,10 @@ import Util ( optionalError )
 
 -- | Create a list of all WLP's of a program, one for each path (lazily).
 makeWLPs :: Expr -> ExecTree -> [Expr]
-makeWLPs q (Node s ts)     = [wlpStmt s x | t <- ts, x <- makeWLPs q t]
-makeWLPs q (Termination s) = [wlpStmt s q]
+makeWLPs q = cata f
+  where
+    f (NodeF s ts)     = map (wlpStmt s) (concat ts)
+    f (TerminationF s) = [wlpStmt s q]
 
 wlpTree :: ExecTree -> Expr -> Expr
 wlpTree (Node s ts) q = wlpStmt s wlpChildrenCombined

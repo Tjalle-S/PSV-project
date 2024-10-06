@@ -63,6 +63,7 @@ executable wlp-verifier
                     , WLP
                     , TreeBuilder
                     , Expr
+                    , Statement
                     , Util
                     , Z3Util
                     , Z3Instance

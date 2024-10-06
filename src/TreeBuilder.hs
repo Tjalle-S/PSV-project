@@ -1,5 +1,10 @@
+-- {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE TypeFamilies #-}
+-- {-# LANGUAGE TemplateHaskell #-}
+
 module TreeBuilder (
   ExecTree(..)
+, ExecTreeF(..)
 , ExecStmt(..)
 , replaceVar
 , badExpr2goodExpr
@@ -12,11 +17,9 @@ import Data.Maybe (mapMaybe)
 import Control.Monad.State
 import Data.Functor.Foldable (Recursive (cata), Corecursive (embed))
 import Expr ( Expr (..), ExprF(..) )
--- import Data.Fix(Fix(Fix))
 import Util (optionalError)
-
-data ExecTree = Node ExecStmt [ExecTree] | Termination ExecStmt
-  deriving (Show)
+import Data.Functor.Foldable.TH (MakeBaseFunctor(makeBaseFunctor))
+import Statement (ExecTree(..), ExecStmt(..), ExecStmtF(..))
 
 makeUnique :: String -> State [(String,Type)] String
 makeUnique s= do
@@ -52,9 +55,6 @@ getVarStr (P.Var s) = s
 getVarStr (P.RepBy e _ _) = getVarStr e
 getVarStr e = error $ show e ++ " is not an array"
 
--- makeVar :: String -> Type -> Fix ExprF
--- makeVar n = Fix . Var n
-
 makeQuantifier :: (String -> Expr -> Expr) -> String -> String -> Expr -> Expr
 makeQuantifier q s s' e' = q s' (replace s (Var s' $ PType PTInt) e')
 
@@ -79,16 +79,6 @@ badExpr2goodExpr (P.RepBy e1 e2 e3)   = RepBy <$> badExpr2goodExpr e1 <*> badExp
 badExpr2goodExpr (P.Cond e1 e2 e3)    = Cond  <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2 <*> badExpr2goodExpr e3
 badExpr2goodExpr (P.NewStore _)       = optionalError -- Pointer types.
 badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
-
-
-data ExecStmt = ESkip
-              | EAssert Expr
-              | EAssume Expr
-              | EAssign     String           Expr
-              | EAAssign    String           Expr   Expr
-              | EDrefAssign String           Expr
-              | EBlock
-  deriving (Show)
 
 progToExecMaxDepth :: Int -> Program -> ExecTree
 progToExecMaxDepth d  = cut d . progToExec
@@ -142,7 +132,7 @@ stmtToExec (IfThenElse e s1 s2) = do
                                     e' <- badExpr2goodExpr e
                                     s1'<- stmtToExec s1
                                     s2'<- stmtToExec s2
-                                    return $Node ESkip [Node (EAssume $ e') [s1'], Node (EAssume $ OpNeg e') [s2']]
+                                    return $ Node ESkip [Node (EAssume e') [s1'], Node (EAssume $ OpNeg e') [s2']]
 stmtToExec (While e s)      = do
                                     e' <- badExpr2goodExpr e
                                     s'<- stmtToExec s
