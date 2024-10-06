@@ -64,7 +64,7 @@ expr2astF (CondF c t f)         = join (mkIte <$> c <*> t <*> f)
 
 expr2astF (ArrayElemF a i  )    = join (mkSelect <$> a <*> i)
 expr2astF (RepByF     a i e)    = join (mkStore  <$> a <*> i <*> e)
-expr2astF (SizeOfF    a    )    = mkIntVar =<< mkStringSymbol ('#' : a)
+expr2astF (SizeOfF    a    )    = incrSize >> (mkIntVar =<< mkStringSymbol ('#' : a))
 
 expr2astF (ForallF name e)      = mkQuantifier mkForall name e
 expr2astF (ExistsF name e)      = mkQuantifier mkExists name e

@@ -50,7 +50,6 @@ testAllPaths (e:es) = do
     Nothing -> testAllPaths es                                            -- No counterexample found, check next WLP.
     Just ex -> return $ unlines ["Reject\n", "Variable assignments:", ex] -- Counterexample found, stop here.
 
-
 printOptions :: OutputOptions
 printOptions = OutputOptions 2 120 True True 0 Nothing EscapeNonPrintable
 

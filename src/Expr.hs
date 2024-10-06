@@ -1,14 +1,10 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
--- {-# LANGUAGE DeriveGeneric #-}
 
 module Expr (ExprF(..), Expr(..), prettyishPrintExpr) where
 
 import GCLParser.GCLDatatype (Type(..), BinOp(..))
--- import Data.Fix (Fix)
--- import Generic.Data (Generic1, Generically1(..))
--- import Data.Functor.Classes (Show1)
 import Data.Functor.Foldable (Recursive(cata))
 import Data.Functor.Foldable.TH (MakeBaseFunctor(makeBaseFunctor))
 
@@ -25,31 +21,11 @@ data Expr
     | SizeOf             String
     | RepBy              Expr Expr Expr
     | Cond               Expr Expr Expr
-    deriving (Show, Eq)
     -- | NewStore           Expr
     -- | Dereference        String
+    deriving (Show, Eq)
 
 makeBaseFunctor ''Expr
-
--- data ExprF a
---     = Var                String Type
---     | LitI               Int     
---     | LitB               Bool    
---     -- | LitNull
---     | ArrayElem          a a   
---     | OpNeg              a    
---     | BinopExpr          BinOp a a
---     | Forall             String a
---     | Exists             String a
---     | SizeOf             String
---     | RepBy              a a a
---     | Cond               a a a
---     -- | NewStore           Expr
---     -- | Dereference        String
---     deriving (Functor, Generic1)
---     deriving Show1 via Generically1 ExprF
-
--- type Expr = Fix ExprF
 
 prettyishPrintExpr :: Expr -> String
 prettyishPrintExpr = cata prettyishPrintExpr'
