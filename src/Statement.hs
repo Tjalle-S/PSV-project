@@ -2,9 +2,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveTraversable #-}
 
-module Statement (ExecStmt(..), ExecStmtF(..)) where 
+module Statement (ExecStmt(..), ExecTree(..), ExecTreeF(..)) where 
 
 import Expr (Expr)
+
+import Data.Functor.Foldable.TH (makeBaseFunctor)
 
 data ExecStmt = ESkip
               | EAssert Expr

@@ -3,10 +3,7 @@
 -- {-# LANGUAGE TemplateHaskell #-}
 
 module TreeBuilder (
-  ExecTree(..)
-, ExecTreeF(..)
-, ExecStmt(..)
-, replaceVar
+  replaceVar
 , badExpr2goodExpr
 , progToExec
 , progToExecMaxDepth) where
@@ -18,8 +15,7 @@ import Control.Monad.State
 import Data.Functor.Foldable (Recursive (cata), Corecursive (embed))
 import Expr ( Expr (..), ExprF(..) )
 import Util (optionalError)
-import Data.Functor.Foldable.TH (MakeBaseFunctor(makeBaseFunctor))
-import Statement (ExecTree(..), ExecStmt(..), ExecStmtF(..))
+import Statement (ExecTree(..), ExecStmt(..), ExecTree(..))
 
 makeUnique :: String -> State [(String,Type)] String
 makeUnique s= do

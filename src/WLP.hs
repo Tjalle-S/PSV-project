@@ -1,9 +1,9 @@
 module WLP (wlpTree, makeWLPs) where
 
 import Expr ( Expr (..), ExprF(..) )
-import Data.Fix ( Fix (..) )
+import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 import GCLParser.GCLDatatype ( BinOp(..) )
-import TreeBuilder ( ExecStmt(..), ExecTree(..), ExecTreeF(..), replaceVar )
+import TreeBuilder ( replaceVar )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 

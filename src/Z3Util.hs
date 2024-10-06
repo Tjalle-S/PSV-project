@@ -13,7 +13,7 @@ import Control.Monad ( join )
 import Control.Monad.State ( MonadState, modify' )
 import Data.Functor.Foldable ( Recursive(cata) )
 
-import Util ( VState (..), Stats (..), optionalError )
+import Util ( VState(..), Stats(..), optionalError )
 
 
 -- | Transforms an expression into a Z3 AST.

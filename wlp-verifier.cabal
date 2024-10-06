@@ -79,9 +79,7 @@ executable wlp-verifier
                     , pretty-simple
                     , mtl
                     , time
-                    , data-fix
                     , recursion-schemes
-                    , generic-data
 
     -- Directories containing source files.
     hs-source-dirs:   src
