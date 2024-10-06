@@ -1,17 +1,20 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns   #-}
 
-module Z3Util (expr2ast, isSatisfiable, isValid, Expr, ExprF(..)) where
+module Z3Util (expr2ast, isSatisfiable, isValid, getValidityCounterExample) where
 
-import GCLParser.GCLDatatype (Type(..), BinOp(..), PrimitiveType (..))
+import GCLParser.GCLDatatype ( Type(..), BinOp(..), PrimitiveType (..) )
+import Expr ( Expr, ExprF(..) )
+
 import Z3.Monad
-import Control.Monad (join)
-import Util (VState (..), Stats (..))
-import Data.Functor.Foldable (Recursive(cata))
-
 import Z3Instance ()
-import Control.Monad.State (MonadState, modify')
-import Expr (Expr, ExprF(..))
+
+import Control.Monad ( join )
+import Control.Monad.State ( MonadState, modify' )
+import Data.Functor.Foldable ( Recursive(cata) )
+
+import Util ( VState(..), Stats(..), optionalError )
+
 
 -- | Transforms an expression into a Z3 AST.
 expr2ast :: (MonadZ3 m, MonadState VState m) => Expr -> m AST
@@ -31,31 +34,40 @@ isValid ast = test . fst <$ (assert =<< mkNot ast) <*> getModel
     test Unsat = True
     test _     = False
 
+-- | Attempts to find a counterexample to show the assertion is not valid.
+getValidityCounterExample :: MonadZ3 m => AST -> m (Maybe String)
+getValidityCounterExample ast = do
+  assert =<< mkNot ast
+  (_res, model) <- getModel
+  case model of
+    Nothing -> return Nothing
+    Just m  -> Just <$> showModel m
+
 -- ============================================================
 
 expr2astF :: (MonadZ3 m, MonadState VState m) => ExprF (m AST) -> m AST
-expr2astF (Var name typ)       = incrSize >> makeVar name typ
+expr2astF (VarF name typ)       = incrSize >> makeVar name typ
 
-expr2astF (LitI i)             = incrSize >> mkIntNum i
-expr2astF (LitB b)             = incrSize >> mkBool b
+expr2astF (LitIF i)             = incrSize >> mkIntNum i
+expr2astF (LitBF b)             = incrSize >> mkBool b
 
-expr2astF (OpNeg me)           = do
+expr2astF (OpNegF me)           = do
   e    <- me
   sort <- getSortKind =<< getSort e
   case sort of
     Z3_BOOL_SORT -> mkNot        e
     Z3_INT_SORT  -> mkUnaryMinus e
     other        -> error ("Panic! Cannot negate type " ++ show other) -- Should never occur.
-expr2astF (BinopExpr op e1 e2) = join (mkOp op <$> e1 <*> e2)
+expr2astF (BinopExprF op e1 e2) = join (mkOp op <$> e1 <*> e2)
 
-expr2astF (Cond c t f)         = join (mkIte <$> c <*> t <*> f)
+expr2astF (CondF c t f)         = join (mkIte <$> c <*> t <*> f)
 
-expr2astF (ArrayElem a i  )    = join (mkSelect <$> a <*> i)
-expr2astF (RepBy     a i e)    = join (mkStore  <$> a <*> i <*> e)
-expr2astF (SizeOf    a    )    = mkIntVar =<< mkStringSymbol ('#' : a) -- Why does the datatype have the array as an expression instead of a string?
+expr2astF (ArrayElemF a i  )    = join (mkSelect <$> a <*> i)
+expr2astF (RepByF     a i e)    = join (mkStore  <$> a <*> i <*> e)
+expr2astF (SizeOfF    a    )    = incrSize >> (mkIntVar =<< mkStringSymbol ('#' : a))
 
-expr2astF (Forall name e)  = mkQuantifier mkForall name e
-expr2astF (Exists name e)  = mkQuantifier mkExists name e
+expr2astF (ForallF name e)      = mkQuantifier mkForall name e
+expr2astF (ExistsF name e)      = mkQuantifier mkExists name e
 
 makeVar :: MonadZ3 m => String -> Type -> m AST
 makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
@@ -63,7 +75,7 @@ makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
 makeSort :: MonadZ3 m => Type -> m Sort
 makeSort (PType t) = makePrimSort t
 makeSort (AType t) = join (mkArraySort <$> mkIntSort <*> makePrimSort t)
-makeSort RefType   = error "Not implemented" -- Pointer types.
+makeSort RefType   = optionalError -- Pointer types.
 
 makePrimSort :: MonadZ3 m => PrimitiveType -> m Sort
 makePrimSort PTInt  = mkIntSort
@@ -85,7 +97,7 @@ mkOp Minus            = uncurryList mkSub
 mkOp Multiply         = uncurryList mkMul
 mkOp Divide           = mkDiv
 
-mkOp Alias            = error "Not implemented" -- Reference equality.
+mkOp Alias            = optionalError -- Reference equality.
 
 uncurryList :: ([a] -> b) -> a -> a -> b
 uncurryList op l r = op [l, r]
