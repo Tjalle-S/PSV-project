@@ -44,12 +44,8 @@ replace :: String -> Expr -> Expr -> Expr
 replace s e1 = cata f
   where
     f :: ExprF Expr -> Expr
-    f (Var s' _) =  replaceVar s' e1 s--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f (Var s' t) =  replaceVar s' e1 s t --foldExpr (defaultAlgebra {var=replaceVar s e})
     f e' = Fix e'
-
-replaceVar :: [Char] -> Expr -> [Char] -> Expr
-replaceVar s1 e s2 | s1==s2 = e
-                   | otherwise = Fix $ Var s2 (PType PTInt) --This is temporary
 
 getVarStr :: P.Expr -> String
 getVarStr (P.Var s) = s
@@ -61,6 +57,11 @@ makeVar n = Fix . Var n
 
 makeQuantifier :: (String -> Expr -> ExprF Expr) -> String -> String -> Expr -> Expr
 makeQuantifier q s s' e' = Fix $ q s' (replace s (makeVar s' $ PType PTInt) e')
+
+replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
+replaceVar s1 e s2 t| s1==s2 = e
+                    | otherwise = Fix $ Var s2 t 
+                
 
 badExpr2goodExpr :: P.Expr -> State [(String,Type)] Expr
 badExpr2goodExpr (P.Var s)            = makeVar s <$> findType s

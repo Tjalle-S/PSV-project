@@ -30,12 +30,12 @@ wlpStmt (EAssume e1) = Fix . BinopExpr Implication e1
 wlpStmt (EAssign s e) = cata f--foldExpr (defaultAlgebra {var=replaceVar s e})
   where
     f :: ExprF Expr -> Expr
-    f e'@(Var s' t) = replaceVar s (Fix e') s--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f e'@(Var s' t) = replaceVar s e s' t--foldExpr (defaultAlgebra {var=replaceVar s e})
     f e = Fix e
 wlpStmt (EAAssign s (Fix i) e) = cata f --foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
   where
     f :: ExprF Expr -> Expr
-    f e'@(Var s' t) = replaceVar s' (Fix $ RepBy (Fix $ Var s t) (Fix i) (Fix e')) s--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f e'@(Var s' t) = replaceVar s' (Fix $ RepBy (Fix $ Var s t) (Fix i) (Fix e')) s t--foldExpr (defaultAlgebra {var=replaceVar s e})
     f e = Fix e
 wlpStmt (EDrefAssign s e) = optionalError -- Reference types.
 wlpStmt EBlock = error "TODO"
