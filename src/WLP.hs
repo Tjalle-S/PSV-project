@@ -3,11 +3,7 @@ import TreeBuilder --(ExecStmt)
 import GCLParser.GCLDatatype hiding (Expr(..))
 import Data.Functor.Foldable (Recursive (cata))
 import Data.Fix (Fix (..))
-<<<<<<< HEAD
-import Control.Monad.State.Lazy
-=======
 import Expr ( Expr, ExprF(..) )
->>>>>>> main
 
 wlpTree :: ExecTree -> Expr -> Expr
 wlpTree (Node s ts) q = wlpStmt s wlpChildrenCombined

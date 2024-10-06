@@ -50,17 +50,17 @@ replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
 replaceVar s1 e s2 t| s1==s2 = e
                     | otherwise = Fix $ Var s2 t 
                 
+makeVar :: String -> Type -> Fix ExprF
+makeVar n = Fix . Var n
+
+makeQuantifier :: (String -> Expr -> ExprF Expr) -> String -> String -> Expr -> Expr
+makeQuantifier q s s' e' = Fix $ q s' (replace s (makeVar s' $ PType PTInt) e')
 
 getVarStr :: P.Expr -> String
 getVarStr (P.Var s) = s
 getVarStr (P.RepBy e _ _) = getVarStr e
 getVarStr e = error $ show e ++ " is not an array"
 
-makeVar :: String -> Type -> Fix ExprF
-makeVar n = Fix . Var n
-
-makeQuantifier :: (String -> Expr -> ExprF Expr) -> String -> String -> Expr -> Expr
-makeQuantifier q s s' e' = Fix $ q s' (replace s (makeVar s' $ PType PTInt) e')
 
 badExpr2goodExpr :: P.Expr -> State [(String,Type)] Expr
 badExpr2goodExpr (P.Var s)            = makeVar s <$> findType s
