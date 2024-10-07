@@ -51,13 +51,8 @@ expr2astF (VarF name typ)       = incrSize >> makeVar name typ
 expr2astF (LitIF i)             = incrSize >> mkIntNum i
 expr2astF (LitBF b)             = incrSize >> mkBool b
 
-expr2astF (OpNegF me)           = do
-  e    <- me
-  sort <- getSortKind =<< getSort e
-  case sort of
-    Z3_BOOL_SORT -> mkNot        e
-    Z3_INT_SORT  -> mkUnaryMinus e
-    other        -> error ("Panic! Cannot negate type " ++ show other) -- Should never occur.
+expr2astF (OpNegF e)            = mkNot =<< e
+
 expr2astF (BinopExprF op e1 e2) = join (mkOp op <$> e1 <*> e2)
 
 expr2astF (CondF c t f)         = join (mkIte <$> c <*> t <*> f)

@@ -1,17 +1,26 @@
-module Cli (getOptions, ArgData(..)) where
+module Cli (getOptions, ArgData(..), HeuristicOptions(..)) where
 
 import Options.Applicative
 
 -- | Passed command-line options.
 data ArgData = ArgData {
   -- | File name of the file to verify.
-  fileName         :: String
+  fileName            :: String
   -- | Maximum length of full paths to verify.
-, maxLength        :: Int
+, maxLength           :: Int
   -- | Whether or not statistics should be kept track of and printed.
-, showStats        :: Bool
+, showStats           :: Bool
+  -- | Whether or not all calculated preconditions should be dumped to stdout.
+, dumpConditions      :: Bool
+
   -- | Whether or not heuristics should be enabled.
-, enableHeuristics :: Bool
+, enableAllHeuristics :: Bool
+  -- | Which heuristics are explicitly enabled.
+, enabledHeuristics   :: HeuristicOptions
+}
+
+data HeuristicOptions = HeuristicOptions {
+  pruneInfeasible :: Bool
 }
 
 -- | Parser for commandline options.
@@ -30,10 +39,20 @@ parseOptions = ArgData
     <> short 's'
     <> help "Keep track of statistics during the process")
   <*> switch (
-       long "enable-heuristics"
+       long "dump-wlp"
+    <> short 'd'
+    <> help "Dump all calculated preconditions (even if not evaluated)")
+  <*> switch (
+       long "optimize"
     <> short 'O'
-    <> help "Enable all heuristics"
-  )
+    <> help "Enable all heuristics")
+  <*> parseHeuristics
+  
+parseHeuristics :: Parser HeuristicOptions
+parseHeuristics = HeuristicOptions
+  <$> switch (
+       long "prune-infeasible"
+    <> help "Attempt to prune infeasible paths")
 
 -- | Get all commandline options.
 getOptions :: IO ArgData

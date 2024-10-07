@@ -2,9 +2,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optionalError, incrNumPaths) where
+module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optionalError, incrNumPaths, isEnabled) where
 
-import Cli (ArgData)
+import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
 import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify')
 -- import Data.Map (Map)
@@ -59,3 +59,6 @@ optionalError = error "Not implemented: optional assignment"
 
 incrNumPaths :: MonadState VState m => m ()
 incrNumPaths = modify' $ \v@VState { stats = s@Stats { inspectedPaths } } -> v { stats = s { inspectedPaths = inspectedPaths + 1 } }
+
+isEnabled :: (HeuristicOptions -> Bool) -> ReaderData -> Bool
+isEnabled f = (||) <$> enableAllHeuristics <*> f . enabledHeuristics <$> options

@@ -52,7 +52,7 @@ build-type:         Simple
 -- extra-source-files:
 
 executable wlp-verifier
-    ghc-options:      -Wall
+    ghc-options:      -Wall -O2
 
     -- .hs or .lhs file containing the Main module.
     main-is:          Main.hs
