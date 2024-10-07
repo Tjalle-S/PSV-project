@@ -88,11 +88,11 @@ varDeclsToTuples :: [VarDeclaration]-> [(String,Type)]
 varDeclsToTuples = map (\(VarDeclaration s t)->(s,t))
 
 progToExec :: Program -> ExecTree
-progToExec Program {stmt=s,input=input,output=output} = evalState (stmtToExec s) (varDeclsToTuples (input++output))
+progToExec Program {stmt = s, input = i, output = o} = evalState (stmtToExec s) (varDeclsToTuples $ i ++ o)
 
 treeConcat :: ExecTree -> ExecTree -> ExecTree
-treeConcat (Node e ts) t2=Node e (map (`treeConcat` t2) ts)
-treeConcat (Termination e) t2= Node e [t2]
+treeConcat (Node e ts)     t2 = Node e (map (`treeConcat` t2) ts)
+treeConcat (Termination e) t2 = Node e [t2]
 
 stmtToExec :: Stmt -> State [(String,Type)] ExecTree
 stmtToExec Skip = return $ Termination ESkip
@@ -121,7 +121,7 @@ stmtToExec (IfThenElse e s1 s2) = do
                                     s1'<- stmtToExec s1
                                     s2'<- stmtToExec s2
                                     return $ Node ESkip [Node (EAssume e') [s1'], Node (EAssume $ OpNeg e') [s2']]
-stmtToExec (While e s)      = do
+stmtToExec (While e s)          = do
                                     e' <- badExpr2goodExpr e
                                     s'<- stmtToExec s
                                     return $ whileExec e' s'

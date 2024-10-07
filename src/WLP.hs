@@ -33,9 +33,9 @@ wlpStmt (EAssign s e) = replace s e
 wlpStmt (EAAssign s i e) = cata f --replace s (RepBy (Var s t) i e) --foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
   where
     f :: ExprF Expr -> Expr
-    f e'@(VarF s' t) = replaceVar s' (RepBy (Var s t) i e) s t--foldExpr (defaultAlgebra {var=replaceVar s e})
-    f e = embed e
-wlpStmt (EDrefAssign s e) = optionalError -- Reference types.
+    f (VarF s' t) = replaceVar s' (RepBy (Var s t) i e) s t--foldExpr (defaultAlgebra {var=replaceVar s e})
+    f e' = embed e'
+wlpStmt (EDrefAssign _ _) = optionalError -- Reference types.
 wlpStmt EBlock = error "TODO"
 
 replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
