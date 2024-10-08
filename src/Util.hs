@@ -6,7 +6,7 @@ module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optiona
 
 import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
-import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify')
+import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify', MonadWriter, MonadIO)
 -- import Data.Map (Map)
 
 -- TODO: find better names.
@@ -31,7 +31,7 @@ data Stats = Stats {
 -- Note that total computation time does not need to be kept as state.
 } deriving Show
 
-type Log = [String]
+type Log = String
 
 type GT = RWST ReaderData Log VState
 
