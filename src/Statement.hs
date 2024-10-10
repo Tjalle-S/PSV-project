@@ -14,7 +14,7 @@ data ExecStmt = ESkip
               | EAssign     String           Expr
               | EAAssign    String           Expr   Expr
               | EDrefAssign String           Expr
-              | EBlock
+              -- | EBlock
               deriving (Show)
 
 data ExecTree = Node ExecStmt [ExecTree]

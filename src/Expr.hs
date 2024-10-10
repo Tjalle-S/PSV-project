@@ -2,9 +2,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Expr (ExprF(..), Expr(..), prettyishPrintExpr) where
+module Expr (
+  ExprF(..)
+, Expr(..)
+, prettyishPrintExpr
+-- Re-export necessary types from the GCL parser.
+, Type(..)
+, PrimitiveType(..)
+, BinOp(..)
+) where
 
-import GCLParser.GCLDatatype (Type(..), BinOp(..))
+import GCLParser.GCLDatatype (Type(..), PrimitiveType(..), BinOp(..))
+
 import Data.Functor.Foldable (Recursive(cata))
 import Data.Functor.Foldable.TH (MakeBaseFunctor(makeBaseFunctor))
 

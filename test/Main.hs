@@ -7,7 +7,6 @@ import Test.Tasty hiding (defaultMain)
 import Test.Tasty.HUnit
 import Cli (ArgData(..), HeuristicOptions (HeuristicOptions, pruneInfeasible))
 import Runner (run)
-import Control.Monad.Writer (WriterT(runWriterT))
 import Data.Bool (bool)
 
 main :: IO ()
@@ -40,7 +39,8 @@ makeTests names expected =
 getResultOf :: IO Program -> IO Bool
 getResultOf mp = do
   p <- mp
-  fst <$> runWriterT (run defaultArgs p)
+  (res, _, _) <- run defaultArgs p
+  return res
 
 testcaseFull :: Bool -> IO Program -> Assertion
 testcaseFull expected mp = do

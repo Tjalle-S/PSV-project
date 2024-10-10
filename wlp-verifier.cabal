@@ -24,6 +24,7 @@ library lib-verifier
                   , optparse-applicative  ^>= 0.18.1
                   , mtl                   ^>= 2.2.2
                   , recursion-schemes     ^>= 5.2.3
+                  , dlist
                   , GCLparser
 
   hs-source-dirs:   src

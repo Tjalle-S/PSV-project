@@ -3,28 +3,33 @@
 module Runner (run) where
 
 import GCLParser.GCLDatatype (Program)
-import Control.Monad.Writer (MonadWriter (tell), MonadIO (liftIO))
+import Control.Monad.Writer (MonadWriter (tell))
 import Cli (ArgData (..))
 import Expr (Expr(LitB))
 import WLP (makeWLPs)
 import TreeBuilder (progToExecMaxDepth)
-import Util (runV, ReaderData (..), VState, incrNumPaths)
+import Util (runV, ReaderData (..), incrNumPaths, Log, MonadG, VState, whenRs)
 import Z3.Monad (MonadZ3)
-import Control.Monad.State (MonadState)
 import Z3Instance ()
 import Z3Util (getValidityCounterExample, expr2ast)
+import Data.DList (singleton)
+import Control.Monad.State
 
-run :: (MonadWriter String m, MonadIO m) => ArgData -> Program -> m Bool
+run :: MonadIO m => ArgData -> Program -> m (Bool, VState, Log)
 run args prog = do
   let wlps = makeWLPs (LitB True) (progToExecMaxDepth (maxLength args) prog)
-  (res, _, _) <- liftIO $ runV (ReaderData args) (testAllPaths wlps)
-  return res
+  (res, st, logs) <- liftIO $ runV (ReaderData args) (testAllPaths wlps)
+  return (res, st, logs)
 
-testAllPaths :: (MonadZ3 m, MonadState VState m, MonadWriter String m) => [Expr] -> m Bool
-testAllPaths []     = tell "Accept\n\n" >> return True
+testAllPaths :: (MonadZ3 m, MonadG m) => [Expr] -> m Bool
+testAllPaths []     = tell (singleton "Accept\n") >> return True
 testAllPaths (e:es) = do
   incrNumPaths
+  whenRs (dumpConditions . options) $
+    tell $ singleton (show e)
   res <- getValidityCounterExample =<< expr2ast e
   case res of
-    Nothing -> testAllPaths es                                                          -- No counterexample found, check next WLP.
-    Just ex -> tell (unlines ["Reject\n", "Variable assignments:", ex]) >> return False -- Counterexample found, stop here.
+    -- No counterexample found, check next WLP.
+    Nothing -> testAllPaths es
+     -- Counterexample found, stop here.
+    Just ex -> tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex]) >> return False
