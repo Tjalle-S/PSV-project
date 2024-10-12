@@ -35,13 +35,15 @@ isValid ast = test . fst <$ (assert =<< mkNot ast) <*> getModel
     test _     = False
 
 -- | Attempts to find a counterexample to show the assertion is not valid.
-getValidityCounterExample :: MonadZ3 m => AST -> m (Maybe String)
-getValidityCounterExample ast = do
+getValidityCounterExample :: MonadZ3 m => [AST] -> AST -> m (Maybe String)
+getValidityCounterExample as ast = do
   assert =<< mkNot ast
-  (_res, model) <- getModel
-  case model of
-    Nothing -> return Nothing
-    Just m  -> Just <$> showModel m
+  res <- checkAssumptions as
+  case res of
+    Sat -> Just <$> (showModel =<< solverGetModel)
+    _   -> return Nothing
+    -- Nothing -> return Nothing
+    -- Just m  -> Just <$> showModel m
 
 -- ============================================================
 

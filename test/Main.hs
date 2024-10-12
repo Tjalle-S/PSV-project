@@ -52,7 +52,7 @@ testcaseFull expected mp = do
 defaultArgs :: ArgData
 defaultArgs = ArgData {
   fileName  = "" -- Not necessary.
-, maxLength = 50
+, maxLength = 65
 , showStats = False
 , dumpConditions = False
 , enableAllHeuristics = False
@@ -62,7 +62,7 @@ defaultArgs = ArgData {
 }
 
 valuesOfN :: [Int]
-valuesOfN = [2..2]
+valuesOfN = [2..3]
 
 validPrograms :: [String]
 validPrograms = map ("valid/" ++) programs

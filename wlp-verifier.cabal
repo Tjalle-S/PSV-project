@@ -33,7 +33,7 @@ library lib-verifier
 
 
 executable test-verifier
-  ghc-options:      -Wall -O2
+  ghc-options:      -Wall -O2 -fproc-alignment=64
 
   main-is:          Main.hs
 
