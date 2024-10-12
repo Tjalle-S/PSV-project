@@ -94,37 +94,23 @@ treeConcat :: ExecTree -> ExecTree -> ExecTree
 treeConcat (Node e ts)     t2 = Node e (map (`treeConcat` t2) ts)
 treeConcat (Termination e) t2 = Node e [t2]
 
+makeTerminate :: (Expr -> ExecStmt) -> P.Expr -> State [(String, Type)] ExecTree
+makeTerminate s e = Termination . s <$> badExpr2goodExpr e
+
 stmtToExec :: Stmt -> State [(String,Type)] ExecTree
-stmtToExec Skip = return $ Termination ESkip
-stmtToExec (Assert e)           = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAssert $ e')
-stmtToExec (Assume e)           = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAssume $ e')
-stmtToExec (Assign s e)         = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAssign s $ e')
-stmtToExec (AAssign s i e)      = do
-                                    i' <- badExpr2goodExpr i
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAAssign s i' e')
-stmtToExec (DrefAssign s e)     = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EDrefAssign s e')
-stmtToExec (Seq s1 s2)          = do
-                                    s1' <- stmtToExec s1
-                                    s2' <- stmtToExec s2
-                                    return $ treeConcat s1' s2'
+stmtToExec Skip                 = return $ Termination ESkip
+stmtToExec (Assert e)           = makeTerminate EAssert     e
+stmtToExec (Assume e)           = makeTerminate EAssume     e
+stmtToExec (Assign s e)         = makeTerminate (EAssign s) e
+stmtToExec (AAssign s i e)      = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
+stmtToExec (DrefAssign s e)     = makeTerminate (EDrefAssign s) e
+stmtToExec (Seq s1 s2)          = treeConcat <$> stmtToExec s1 <*> stmtToExec s2
 stmtToExec (IfThenElse e s1 s2) = do
                                     e' <- badExpr2goodExpr e
                                     s1'<- stmtToExec s1
                                     s2'<- stmtToExec s2
                                     return $ Node ESkip [Node (EAssume e') [s1'], Node (EAssume $ OpNeg e') [s2']]
-stmtToExec (While e s)          = do
-                                    e' <- badExpr2goodExpr e
-                                    s'<- stmtToExec s
-                                    return $ whileExec e' s'
+stmtToExec (While e s)          = whileExec <$> badExpr2goodExpr e <*> stmtToExec s
   where
     whileExec cond body = Node ESkip [Node (EAssume cond) [treeConcat body (whileExec cond body)],Termination (EAssume $ OpNeg cond)]
 stmtToExec (Block v s)          = mapM_ addVar (varDeclsToTuples v) >> stmtToExec s
