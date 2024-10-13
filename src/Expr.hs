@@ -2,25 +2,34 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Expr (ExprF(..), Expr(..), prettyishPrintExpr) where
+module Expr (
+  ExprF(..)
+, Expr(..)
+, prettyishPrintExpr
+-- Re-export necessary types from the GCL parser.
+, Type(..)
+, PrimitiveType(..)
+, BinOp(..)
+) where
 
-import GCLParser.GCLDatatype (Type(..), BinOp(..))
+import GCLParser.GCLDatatype (Type(..), PrimitiveType(..), BinOp(..))
+
 import Data.Functor.Foldable (Recursive(cata))
 import Data.Functor.Foldable.TH (MakeBaseFunctor(makeBaseFunctor))
 
 data Expr
-    = Var                String Type
-    | LitI               Int     
-    | LitB               Bool    
-    -- | LitNull
-    | ArrayElem          Expr Expr   
-    | OpNeg              Expr    
-    | BinopExpr          BinOp Expr Expr
-    | Forall             String Expr
-    | Exists             String Expr
-    | SizeOf             String
-    | RepBy              Expr Expr Expr
-    | Cond               Expr Expr Expr
+    = Var       String Type
+    | LitI      Int     
+    | LitB      Bool    
+    -- LitNull
+    | ArrayElem Expr Expr   
+    | OpNeg     Expr    
+    | BinopExpr BinOp Expr Expr
+    | Forall    String Expr
+    | Exists    String Expr
+    | SizeOf    String
+    | RepBy     Expr Expr Expr
+    | Cond      Expr Expr Expr
     -- | NewStore           Expr
     -- | Dereference        String
     deriving (Show, Eq)

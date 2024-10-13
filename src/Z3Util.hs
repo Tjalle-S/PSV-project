@@ -35,13 +35,15 @@ isValid ast = test . fst <$ (assert =<< mkNot ast) <*> getModel
     test _     = False
 
 -- | Attempts to find a counterexample to show the assertion is not valid.
-getValidityCounterExample :: MonadZ3 m => AST -> m (Maybe String)
-getValidityCounterExample ast = do
+getValidityCounterExample :: MonadZ3 m => [AST] -> AST -> m (Maybe String)
+getValidityCounterExample as ast = do
   assert =<< mkNot ast
-  (_res, model) <- getModel
-  case model of
-    Nothing -> return Nothing
-    Just m  -> Just <$> showModel m
+  res <- checkAssumptions as
+  case res of
+    Sat -> Just <$> (showModel =<< solverGetModel)
+    _   -> return Nothing
+    -- Nothing -> return Nothing
+    -- Just m  -> Just <$> showModel m
 
 -- ============================================================
 
@@ -51,13 +53,8 @@ expr2astF (VarF name typ)       = incrSize >> makeVar name typ
 expr2astF (LitIF i)             = incrSize >> mkIntNum i
 expr2astF (LitBF b)             = incrSize >> mkBool b
 
-expr2astF (OpNegF me)           = do
-  e    <- me
-  sort <- getSortKind =<< getSort e
-  case sort of
-    Z3_BOOL_SORT -> mkNot        e
-    Z3_INT_SORT  -> mkUnaryMinus e
-    other        -> error ("Panic! Cannot negate type " ++ show other) -- Should never occur.
+expr2astF (OpNegF e)            = mkNot =<< e
+
 expr2astF (BinopExprF op e1 e2) = join (mkOp op <$> e1 <*> e2)
 
 expr2astF (CondF c t f)         = join (mkIte <$> c <*> t <*> f)

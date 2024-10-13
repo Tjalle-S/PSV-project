@@ -1,5 +1,5 @@
 module TreeBuilder (
-  replaceVar
+  replace
 , badExpr2goodExpr
 , progToExec
 , progToExecMaxDepth
@@ -36,12 +36,12 @@ addVar (s,t) = do
                   put ((s',t):vars)
                   return s'
 --copied from WLP
-replace :: String -> Expr -> Expr -> Expr
-replace s e1 = cata f
-  where
-    f :: ExprF Expr -> Expr
-    f (VarF s' t) =  replaceVar s' e1 s t --foldExpr (defaultAlgebra {var=replaceVar s e})
-    f e' = embed e'
+-- replace :: String -> Expr -> Expr -> Expr
+-- replace s e1 = cata f
+--   where
+--     f :: ExprF Expr -> Expr
+--     f (VarF s' t) =  replaceVar s' e1 s t --foldExpr (defaultAlgebra {var=replaceVar s e})
+--     f e' = embed e'
 
 getVarStr :: P.Expr -> String
 getVarStr (P.Var s) = s
@@ -51,11 +51,6 @@ getVarStr e = error $ show e ++ " is not an array"
 makeQuantifier :: (String -> Expr -> Expr) -> String -> String -> Expr -> Expr
 makeQuantifier q s s' e' = q s' (replace s (Var s' $ PType PTInt) e')
 
-replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
-replaceVar s1 e s2 t| s1==s2 = e
-                    | otherwise = Var s2 t 
-                
-
 badExpr2goodExpr :: P.Expr -> State [(String,Type)] Expr
 badExpr2goodExpr (P.Var s)            = Var s <$> findType s
 badExpr2goodExpr (P.LitI i)           = return (LitI i)
@@ -64,7 +59,7 @@ badExpr2goodExpr (P.ArrayElem e1 e2)  = ArrayElem <$> badExpr2goodExpr e1 <*> ba
 badExpr2goodExpr (P.OpNeg e)          = OpNeg <$> badExpr2goodExpr e
 badExpr2goodExpr (P.BinopExpr op l r) = BinopExpr op <$> badExpr2goodExpr l <*> badExpr2goodExpr r
 badExpr2goodExpr (P.Forall s e)       = makeQuantifier Forall s <$> addVar (s, PType PTInt) <*> badExpr2goodExpr e
-badExpr2goodExpr (P.Exists s e)       = makeQuantifier Forall s <$> addVar (s, PType PTInt) <*> badExpr2goodExpr e
+badExpr2goodExpr (P.Exists s e)       = makeQuantifier Exists s <$> addVar (s, PType PTInt) <*> badExpr2goodExpr e
 badExpr2goodExpr (P.SizeOf e)         = return (SizeOf $ getVarStr e)
 badExpr2goodExpr (P.RepBy e1 e2 e3)   = RepBy <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2 <*> badExpr2goodExpr e3
 badExpr2goodExpr (P.Parens e)         = badExpr2goodExpr e
@@ -93,46 +88,44 @@ varDeclsToTuples :: [VarDeclaration]-> [(String,Type)]
 varDeclsToTuples = map (\(VarDeclaration s t)->(s,t))
 
 progToExec :: Program -> ExecTree
-progToExec Program {stmt=s,input=input,output=output} = evalState (stmtToExec s) (varDeclsToTuples (input++output))
+progToExec Program {stmt = s, input = i, output = o} = evalState (stmtToExec s) (varDeclsToTuples $ i ++ o)
 
 treeConcat :: ExecTree -> ExecTree -> ExecTree
-treeConcat (Node e ts) t2=Node e (map (`treeConcat` t2) ts)
-treeConcat (Termination e) t2= Node e [t2]
+treeConcat (Node e ts)     t2 = Node e (map (`treeConcat` t2) ts)
+treeConcat (Termination e) t2 = Node e [t2]
+
+makeTerminate :: (Expr -> ExecStmt) -> P.Expr -> State [(String, Type)] ExecTree
+makeTerminate s e = Termination . s <$> badExpr2goodExpr e
 
 stmtToExec :: Stmt -> State [(String,Type)] ExecTree
-stmtToExec Skip = return $ Termination ESkip
-stmtToExec (Assert e)           = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAssert $ e')
-stmtToExec (Assume e)           = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAssume $ e')
-stmtToExec (Assign s e)         = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAssign s $ e')
-stmtToExec (AAssign s i e)      = do
-                                    i' <- badExpr2goodExpr i
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EAAssign s i' e')
-stmtToExec (DrefAssign s e)     = do
-                                    e' <- badExpr2goodExpr e
-                                    return $ Termination (EDrefAssign s e')
-stmtToExec (Seq s1 s2)          = do
-                                    s1' <- stmtToExec s1
-                                    s2' <- stmtToExec s2
-                                    return $ treeConcat s1' s2'
+stmtToExec Skip                 = return $ Termination ESkip
+stmtToExec (Assert e)           = makeTerminate EAssert     e
+stmtToExec (Assume e)           = makeTerminate EAssume     e
+stmtToExec (Assign s e)         = makeTerminate (EAssign s) e
+stmtToExec (AAssign s i e)      = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
+stmtToExec (DrefAssign s e)     = makeTerminate (EDrefAssign s) e
+stmtToExec (Seq s1 s2)          = treeConcat <$> stmtToExec s1 <*> stmtToExec s2
 stmtToExec (IfThenElse e s1 s2) = do
                                     e' <- badExpr2goodExpr e
                                     s1'<- stmtToExec s1
                                     s2'<- stmtToExec s2
                                     return $ Node ESkip [Node (EAssume e') [s1'], Node (EAssume $ OpNeg e') [s2']]
-stmtToExec (While e s)      = do
-                                    e' <- badExpr2goodExpr e
-                                    s'<- stmtToExec s
-                                    return $ whileExec e' s'
+stmtToExec (While e s)          = whileExec <$> badExpr2goodExpr e <*> stmtToExec s
   where
     whileExec cond body = Node ESkip [Node (EAssume cond) [treeConcat body (whileExec cond body)],Termination (EAssume $ OpNeg cond)]
-stmtToExec (Block v s)          = do
-                                    mapM_ addVar $ varDeclsToTuples v
-                                    stmtToExec s--Still has to replace all the occurences of the changed variables
+stmtToExec (Block v s)          = mapM_ addVar (varDeclsToTuples v) >> stmtToExec s
+
+                                    -- stmtToExec s--Still has to replace all the occurences of the changed variables
 stmtToExec (TryCatch {})     = optionalError -- Exception handling.
+
+-- blockToExec :: [Expr -> Expr]
+
+-- | Replace any occurrence of given variable by another expression.
+--
+-- @ replace x e Q @ is equivalent to Q[e/x].
+replace :: String -> Expr -> Expr -> Expr
+replace var by = cata f
+  where
+    f e@(VarF n _) | n == var  = by
+                   | otherwise = embed e
+    f e                        = embed e

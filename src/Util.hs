@@ -2,12 +2,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optionalError, incrNumPaths) where
+module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optionalError, incrNumPaths, isEnabled, Log, whenRs) where
 
-import Cli (ArgData)
+import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
-import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify')
--- import Data.Map (Map)
+import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify', MonadReader, asks)
+import Data.DList (DList)
+import Control.Monad (when)
 
 -- TODO: find better names.
 
@@ -31,7 +32,7 @@ data Stats = Stats {
 -- Note that total computation time does not need to be kept as state.
 } deriving Show
 
-type Log = [String]
+type Log = DList String
 
 type GT = RWST ReaderData Log VState
 
@@ -59,3 +60,12 @@ optionalError = error "Not implemented: optional assignment"
 
 incrNumPaths :: MonadState VState m => m ()
 incrNumPaths = modify' $ \v@VState { stats = s@Stats { inspectedPaths } } -> v { stats = s { inspectedPaths = inspectedPaths + 1 } }
+
+isEnabled :: (HeuristicOptions -> Bool) -> ReaderData -> Bool
+isEnabled f = (||) <$> enableAllHeuristics <*> f . enabledHeuristics <$> options
+
+-- | A variant of 'Control.Monad.when' where the condition is read from an environment.
+whenRs :: (MonadReader env m) => (env -> Bool) -> m () -> m ()
+whenRs getC a = do
+  c <- asks getC
+  when c a

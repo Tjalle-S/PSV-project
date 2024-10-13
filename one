@@ -1,1 +1,21 @@
-reverse(a:[]int | b:[]int) { assume (0 <= #a) && (#a = #b) ; var i:int { i := 0 ; while i < #a do { b[(#a-1)-i] := a[i]; i := i + 1 } } ; assert forall i :: ((0<=i) && (i<#a)) ==> (a[i] = b[(#a-1)-i]) }
+reverse(a:[]int | b:[]int)
+{
+  //assume a[0] = 0;
+  //var a:int {
+  //  a := 1
+  //};
+  //assert a[0] = 0
+
+
+  assume (0 <= #a) && (#a = #b);
+  var i:int
+  {
+    i := 0;
+    while i < #a do
+    {
+      b[(#a-1)-i] := a[i];
+      i := i + 1
+    }
+  };
+  assert forall i :: ((0<=i) && (i<#a)) ==> (a[i] = b[(#a-1)-i])
+}
