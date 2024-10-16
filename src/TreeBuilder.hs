@@ -117,6 +117,7 @@ stmtToExec (Block v s)          = do
                                     v' <- mapM addVar (varDeclsToTuples v)
                                     t <- (stmtToExec s)
                                     return $ replaceVarsTree t (varDeclsToTuples v) v'
+stmtToExec (TryCatch {})     = optionalError -- Exception handling.
 
 replaceVarsTree :: ExecTree -> [(String,Type)] -> [(String,Type)] -> ExecTree
 replaceVarsTree (Node s c) v by = Node (replaceVarsStmt s v by) (map (\t -> replaceVarsTree t v by) c)
@@ -149,7 +150,6 @@ replaceVars e v by= cata f e
 
 
                                     -- stmtToExec s--Still has to replace all the occurences of the changed variables
-stmtToExec (TryCatch {})     = optionalError -- Exception handling.
 
 -- blockToExec :: [Expr -> Expr]
 

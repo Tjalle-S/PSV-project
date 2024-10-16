@@ -10,6 +10,7 @@ library lib-verifier
   exposed-modules:  Cli
                   , WLP
                   , TreeBuilder
+                  , LoopInvariant
                   , Expr
                   , Statement
                   , Util
