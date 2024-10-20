@@ -8,6 +8,7 @@ module TreeBuilder (
 import GCLParser.GCLDatatype hiding (Expr(..))
 import qualified GCLParser.GCLDatatype as P
 import Data.Maybe (mapMaybe)
+import Data.List (union)
 import Control.Monad.State
 import Data.Functor.Foldable (Recursive (cata), Corecursive (embed))
 import Expr ( Expr (..), ExprF(..) )
@@ -104,6 +105,24 @@ stmtToExec (Assume e)           = makeTerminate EAssume     e
 stmtToExec (Assign s e)         = makeTerminate (EAssign s) e
 stmtToExec (AAssign s i e)      = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
 stmtToExec (DrefAssign s e)     = makeTerminate (EDrefAssign s) e
+
+stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) = loopInvariant <$> (badExpr2goodExpr inv) <*> (badExpr2goodExpr c) <*> stmtToExec b <*> stmtToExec _T <*> assigned <*> (mapM addVar =<< assigned) <*> (mapM addVar =<< assigned)
+  where assigned :: State [(String,Type)] [(String,Type)]
+        assigned = getAssigned b <$> get
+        getAssigned (Seq s1 s2) vars = union (getAssigned s1 vars) (getAssigned s2 vars)
+        getAssigned (Assign str _) vars = assign str vars
+        getAssigned (AAssign str _ _) vars = assign str vars
+        getAssigned (DrefAssign str _) vars = assign str vars
+        getAssigned _ _ = []
+        assign :: String -> [(String,Type)] -> [(String,Type)]
+        assign str var = case lookup str var of
+                              Just t -> [(str,t)]
+                              Nothing -> error $ "Variable "++str++" does not exist."
+
+				-- For the loop invariant, we want to be able to see when an assert comes before
+				-- a while loop. For this we assume that statement sequences are in normal
+				-- form.
+stmtToExec (Seq (Seq _ _) _)    = error "is not normalized"
 stmtToExec (Seq s1 s2)          = treeConcat <$> stmtToExec s1 <*> stmtToExec s2
 stmtToExec (IfThenElse e s1 s2) = do
                                     e' <- badExpr2goodExpr e
@@ -118,7 +137,7 @@ stmtToExec (Block v s)          = do
                                     t <- (stmtToExec s)
                                     return $ replaceVarsTree t (varDeclsToTuples v) v'
 stmtToExec (TryCatch {})     = optionalError -- Exception handling.
-
+--TODO: Make Tree fold
 replaceVarsTree :: ExecTree -> [(String,Type)] -> [(String,Type)] -> ExecTree
 replaceVarsTree (Node s c) v by = Node (replaceVarsStmt s v by) (map (\t -> replaceVarsTree t v by) c)
 replaceVarsTree (Termination s) v by = Termination (replaceVarsStmt s v by)
@@ -145,6 +164,15 @@ replaceVars e v by= cata f e
     f (SizeOfF s) = SizeOf (replaceVarsStr s v by)
     f e = embed e
 
+loopInvariant::Expr->Expr->ExecTree->ExecTree->[(String,Type)]->[(String,Type)]->[(String,Type)]->ExecTree
+loopInvariant inv c b _T assigned newvars newnewvars  = foldr1 treeConcat [validInv',assumeInv,rest']
+  where
+      validInv = foldr1 treeConcat [Termination $ EAssume (BinopExpr And inv c),b, Termination $  EAssume inv]
+      validInv'= replaceVarsTree validInv assigned newvars
+      assumeInv = Termination (EAssert inv)
+      rest = Node (EAssume (BinopExpr And inv (OpNeg c))) [_T]
+      rest' = replaceVarsTree rest assigned newnewvars
+      
 --    replaceVw0wars Skip vars by = Skip
 --    replaceVars (Assert e) ((v,t):vars) (b:by) = Assert $ embed (replace v undefined undefined)
 
