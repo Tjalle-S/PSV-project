@@ -190,7 +190,7 @@ replace var by = cata f
     f e@(VarF n _) | n == var  = by
                    | otherwise = embed e
     f e@(SizeOfF n)| n == var = case by of
-                                  (Var byn _) -> embed $ SizeOfF n
+                                  (Var byn _) -> embed $ SizeOfF byn
                                   otherwise -> error "Can only replace the contents of a sizeOf expression with a variable"
                    | otherwise = embed e
     f e = embed e
