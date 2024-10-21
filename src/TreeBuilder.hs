@@ -113,6 +113,8 @@ stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) = loopInvariant <$> (badExpr2
         getAssigned (Assign str _) vars = assign str vars
         getAssigned (AAssign str _ _) vars = assign str vars
         getAssigned (DrefAssign str _) vars = assign str vars
+        getAssigned (IfThenElse _ s1 s2) vars = union (getAssigned s1 vars) (getAssigned s2 vars)
+        getAssigned (While _ s) vars = getAssigned s vars
         getAssigned _ _ = []
         assign :: String -> [(String,Type)] -> [(String,Type)]
         assign str var = case lookup str var of
@@ -165,11 +167,11 @@ replaceVars e v by= cata f e
     f e = embed e
 
 loopInvariant::Expr->Expr->ExecTree->ExecTree->[(String,Type)]->[(String,Type)]->[(String,Type)]->ExecTree
-loopInvariant inv c b _T assigned newvars newnewvars  = foldr1 treeConcat [validInv',assumeInv,rest']
+loopInvariant inv c b _T assigned newvars newnewvars  = foldr1 treeConcat [initInv,validInv',rest']
   where
-      validInv = foldr1 treeConcat [Termination $ EAssume (BinopExpr And inv c),b, Termination $  EAssume inv]
+      initInv = Termination $ EAssert inv
+      validInv = foldr1 treeConcat [Termination $ EAssume (BinopExpr And inv c),b, Termination $  EAssert inv]
       validInv'= replaceVarsTree validInv assigned newvars
-      assumeInv = Termination (EAssert inv)
       rest = Node (EAssume (BinopExpr And inv (OpNeg c))) [_T]
       rest' = replaceVarsTree rest assigned newnewvars
       
