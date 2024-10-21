@@ -8,7 +8,7 @@
 
 // N is an experiment parameter; replace it with a concrete value.
 
-pullUp(N:int, step:int , a:[]int | b:[]int) {
+pullUp(step:int , a:[]int | b:[]int) {
    // N is an experiment parameter
    assume #a>=2 && #a=N && step>0 ;
 
@@ -18,7 +18,6 @@ pullUp(N:int, step:int , a:[]int | b:[]int) {
 
    var k:int {
      k := 1 ;
-     //assert a[k] >= a[0] + k && k <= N-1 ;
      while k < #a - 1 do {
        if a[k] >= a[k+1]
          then { a[k+1] := a[k] + step }

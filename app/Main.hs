@@ -22,10 +22,12 @@ main = do
   args@ArgData{ .. } <- getOptions
   ast <- parseGCLfile fileName
   (st, timeUsed) <- withTimer $ do
-    (_, st, logs) <- case ast of
+    (res, st, logs) <- case ast of
               Left  _err -> error "Parse error"
               Right prog -> run args prog
+    when res (liftIO $ putStrLn "Accept")
     putStr $ unlines $ toList logs
+    
     return st
 
   when showStats $ do 

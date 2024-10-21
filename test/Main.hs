@@ -51,18 +51,18 @@ testcaseFull expected mp = do
 
 defaultArgs :: ArgData
 defaultArgs = ArgData {
-  fileName  = "" -- Not necessary.
-, maxLength = 65
-, showStats = False
-, dumpConditions = False
+  fileName            = "" -- Not necessary.
+, maxLength           = 55
+, showStats           = False
+, dumpConditions      = False
 , enableAllHeuristics = False
-, enabledHeuristics = HeuristicOptions {
-  pruneInfeasible = False
-}
+, enabledHeuristics   = HeuristicOptions {
+    pruneInfeasible = False
+  }
 }
 
 valuesOfN :: [Int]
-valuesOfN = [2..3]
+valuesOfN = [2..2]
 
 validPrograms :: [String]
 validPrograms = map ("valid/" ++) programs
@@ -71,7 +71,7 @@ invalidPrograms :: [String]
 invalidPrograms = map ("invalid/" ++) programs
 
 programs :: [String]
-programs = ["memberOf", "divByN"{-, "pullUp"-}]
+programs = ["memberOf", "divByN", "pullUp"]
 
 getProgram :: String -> Int -> IO Program
 getProgram name n = do

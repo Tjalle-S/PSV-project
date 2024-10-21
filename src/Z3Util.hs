@@ -10,7 +10,7 @@ import Z3.Monad
 import Z3Instance ()
 
 import Control.Monad ( join )
-import Control.Monad.State ( MonadState, modify' )
+import Control.Monad.State ( MonadState, modify', modify )
 import Data.Functor.Foldable ( Recursive(cata) )
 
 import Util ( VState(..), Stats(..), optionalError )
@@ -112,4 +112,4 @@ mkQuantifier q name e = do
   q [] [var] =<< e
 
 incrSize :: (MonadState VState m) => m ()
-incrSize = modify' $ \v@VState { stats = s@Stats { formulaSize } } -> v { stats = s { formulaSize = formulaSize + 1 } }
+incrSize = modify $ \v@VState { stats = s@Stats { formulaSize } } -> v { stats = s { formulaSize = formulaSize + 1 } }

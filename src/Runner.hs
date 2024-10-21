@@ -20,9 +20,8 @@ run args prog = do
 --   let wlps = makeWLPs (LitB True) (progToExecMaxDepth (maxLength args) prog)
 --   (res, st, logs) <- liftIO $ runV (ReaderData args) (testAllPaths wlps)
 --   return (res, st, logs)
-   res@(b, _, _) <- liftIO $ runV (ReaderData args) (calcWLP $ progToExecMaxDepth (maxLength args) prog)
-   when b (liftIO $ putStrLn "Accept")
-   return res
+  liftIO $ runV (ReaderData args) (calcWLP $ progToExecMaxDepth (maxLength args) prog)
+
 
 testAllPaths :: (MonadZ3 m, MonadG m) => [Expr] -> m Bool
 testAllPaths []     = tell (singleton "Accept\n") >> return True

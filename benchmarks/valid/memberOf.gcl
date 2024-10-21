@@ -2,7 +2,7 @@
 
 // N is an experiment parameter; replace it with a concrete value.
 
-memberOf(N:int, x:int, a:[]int | found:bool) {
+memberOf(x:int, a:[]int | found:bool) {
    // N is an experiment parameter
    assume #a>=N && #a>=0
           && (exists k:: 0<=k && k<#a && a[k]=x) ;

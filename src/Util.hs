@@ -6,7 +6,7 @@ module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optiona
 
 import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
-import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify', MonadReader, asks)
+import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify', MonadReader, asks, modify)
 import Data.DList (DList)
 import Control.Monad (when)
 
@@ -59,7 +59,7 @@ optionalError :: a
 optionalError = error "Not implemented: optional assignment"
 
 incrNumPaths :: MonadState VState m => m ()
-incrNumPaths = modify' $ \v@VState { stats = s@Stats { inspectedPaths } } -> v { stats = s { inspectedPaths = inspectedPaths + 1 } }
+incrNumPaths = modify $ \v@VState { stats = s@Stats { inspectedPaths } } -> v { stats = s { inspectedPaths = inspectedPaths + 1 } }
 
 isEnabled :: (HeuristicOptions -> Bool) -> ReaderData -> Bool
 isEnabled f = (||) <$> enableAllHeuristics <*> f . enabledHeuristics <$> options
