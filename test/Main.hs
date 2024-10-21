@@ -10,40 +10,31 @@ import Runner (run)
 import Data.Bool (bool)
 
 main :: IO ()
-main = defaultMain -- Wall-clock time, since time taken by Z3 would otherwise not be measured.
-  [ localOption WallTime $ bgroup "Benchmarks" (makeGroup validPrograms)
-  , bgroup "Test Valid Programs"   (makeTests validPrograms   True)
-  , bgroup "Test Invalid Programs" (makeTests invalidPrograms False)
+main = defaultMain
+  [ bgroup "Benchmarks" (makeGroups makeValid $ \n -> bench n . nfIO . getResultOf)
+  , bgroup "Test Valid Programs"   (makeGroups makeValid   $ \n -> testCase n . makeAssertion True)
+  , bgroup "Test Invalid Programs" (makeGroups makeInvalid $ \n -> testCase n . makeAssertion False)
   ]
 
-makeGroup :: [String] -> [Benchmark]
-makeGroup names = [bgroup name (makeBenches name) | name <- names]
+-- Make a group of tests or benchmarks, with subgroups per program.
+makeGroups :: (String -> String) -> (String -> IO Program -> TestTree) -> [TestTree]
+makeGroups g t = [bgroup name (makeGroup name) | name <- programs]
+  where
+    makeGroup name = [withResource
+      (getProgram (g name) n)
+      (const $ return ())
+      (t $ "N = " ++ show n) | n <- valuesOfN]
 
-makeBenches :: String -> [Benchmark]
-makeBenches name = [withResource
-  (getProgram name n)
-  (const $ return ())
-  (bench ("N = " ++ show n) . benchmarkFull) | n <- valuesOfN]
-
-benchmarkFull :: IO Program -> Benchmarkable
-benchmarkFull = nfIO . getResultOf
-
-makeTests :: [String] -> Bool -> [TestTree]
-makeTests names expected =
-  let n = 7
-  in  [withResource
-    (getProgram name n)
-    (const $ return ())
-    (testCase name . testcaseFull expected) | name <- names]
-
+-- | Get the result of running the verifier on the given program.
 getResultOf :: IO Program -> IO Bool
 getResultOf mp = do
   p <- mp
   (res, _, _) <- run defaultArgs p
   return res
 
-testcaseFull :: Bool -> IO Program -> Assertion
-testcaseFull expected mp = do
+-- | Create an assertion for testing the given program.
+makeAssertion :: Bool -> IO Program -> Assertion
+makeAssertion expected mp = do
   res <- getResultOf mp
   assertEqual ("Expected program to " ++ accOrRej expected ++ " but got " ++ accOrRej res) expected res
   where
@@ -62,17 +53,16 @@ defaultArgs = ArgData {
 }
 
 valuesOfN :: [Int]
-valuesOfN = [2..2]
+valuesOfN = [2..4]
 
-validPrograms :: [String]
-validPrograms = map ("valid/" ++) programs
-
-invalidPrograms :: [String]
-invalidPrograms = map ("invalid/" ++) programs
+makeValid, makeInvalid :: String -> String
+makeValid   = ("valid/" ++)
+makeInvalid = ("invalid/" ++)
 
 programs :: [String]
 programs = ["memberOf", "divByN", "pullUp"]
 
+-- | Read a program with the given name, and replace N by the given constant.
 getProgram :: String -> Int -> IO Program
 getProgram name n = do
   str <- concatMap replace <$> readFile ("benchmarks/" ++ name ++ ".gcl")

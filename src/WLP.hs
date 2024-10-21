@@ -9,7 +9,7 @@ import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
 import Util ( optionalError, V, MonadG, incrNumPaths, whenRs, ReaderData (..) )
 import TreeBuilder (replace)
-import Z3.Monad (MonadZ3, AST, mkNot, mkAnd, assert, getModel, showModel)
+import Z3.Monad (MonadZ3, AST, mkNot, mkAnd, assert, getModel, showModel, local)
 import Z3Util (expr2ast, getValidityCounterExample)
 import Control.Monad.RWS (tell)
 import Data.DList (singleton)
@@ -42,17 +42,19 @@ calcWLP tree = cata f tree [] id
       let e' = em (wlpStmt s $ LitB True)
       whenRs (dumpConditions . options) $
         tell (singleton $ "goal: " ++ prettyishPrintExpr e')
-      ast <- mkNot =<< expr2ast e'
-      assert =<< mkAnd (ast : as)
-      (_res, model) <- getModel
-      case model of
-        -- No counterexample found, check next WLP.
-        Nothing -> return True
-        -- Counterexample found, stop here.
-        Just m -> do
-          ex <- showModel m
-          tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
-          return False
+      local $ do
+        -- return undefined
+        ast <- mkNot =<< expr2ast e'
+        assert =<< mkAnd (ast : as)
+        (_res, model) <- getModel
+        case model of
+          -- No counterexample found, check next WLP.
+          Nothing -> return True
+          -- Counterexample found, stop here.
+          Just m -> do
+            ex <- showModel m
+            tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
+            return False
 
 -- foldrA :: (Foldable t, Applicative m) => (a -> b -> b) -> b -> t (m a) -> m b
 -- foldrA f e = foldr (\c r -> f <$> c <*> r) (pure e)
