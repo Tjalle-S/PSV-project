@@ -99,12 +99,12 @@ makeTerminate :: (Expr -> ExecStmt) -> P.Expr -> State [(String, Type)] ExecTree
 makeTerminate s e = Termination . s <$> badExpr2goodExpr e
 
 stmtToExec :: Stmt -> State [(String,Type)] ExecTree
-stmtToExec Skip                 = return $ Termination ESkip
-stmtToExec (Assert e)           = makeTerminate EAssert     e
-stmtToExec (Assume e)           = makeTerminate EAssume     e
-stmtToExec (Assign s e)         = makeTerminate (EAssign s) e
-stmtToExec (AAssign s i e)      = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
-stmtToExec (DrefAssign s e)     = makeTerminate (EDrefAssign s) e
+stmtToExec Skip             = return $ Termination ESkip
+stmtToExec (Assert e)       = makeTerminate EAssert     e
+stmtToExec (Assume e)       = makeTerminate EAssume     e
+stmtToExec (Assign s e)     = makeTerminate (EAssign s) e
+stmtToExec (AAssign s i e)  = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
+stmtToExec (DrefAssign s e) = makeTerminate (EDrefAssign s) e
 
 stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) = loopInvariant <$> (badExpr2goodExpr inv) <*> (badExpr2goodExpr c) <*> stmtToExec b <*> stmtToExec _T <*> assigned <*> (mapM addVar =<< assigned) <*> (mapM addVar =<< assigned)
   where assigned :: State [(String,Type)] [(String,Type)]
@@ -121,9 +121,9 @@ stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) = loopInvariant <$> (badExpr2
                               Just t -> [(str,t)]
                               Nothing -> error $ "Variable "++str++" does not exist."
 
-				-- For the loop invariant, we want to be able to see when an assert comes before
-				-- a while loop. For this we assume that statement sequences are in normal
-				-- form.
+        -- For the loop invariant, we want to be able to see when an assert comes before
+        -- a while loop. For this we assume that statement sequences are in normal
+        -- form.
 stmtToExec (Seq (Seq _ _) _)    = error "is not normalized"
 stmtToExec (Seq s1 s2)          = treeConcat <$> stmtToExec s1 <*> stmtToExec s2
 stmtToExec (IfThenElse e s1 s2) = do
@@ -192,7 +192,7 @@ replace var by = cata f
     f e@(VarF n _) | n == var  = by
                    | otherwise = embed e
     f e@(SizeOfF n)| n == var = case by of
-                                  (Var byn _) -> embed $ SizeOfF byn
-                                  otherwise -> error "Can only replace the contents of a sizeOf expression with a variable"
+                                  (Var byn _) -> SizeOf byn
+                                  _ -> error "Can only replace the contents of a sizeOf expression with a variable"
                    | otherwise = embed e
     f e = embed e

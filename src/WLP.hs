@@ -7,10 +7,10 @@ import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
-import Util ( optionalError, V, MonadG, incrNumPaths, whenRs, ReaderData (..) )
+import Util ( optionalError, MonadG, incrNumPaths, whenRs, ReaderData (..) )
 import TreeBuilder (replace)
-import Z3.Monad (MonadZ3, AST, mkNot, mkAnd, assert, getModel, showModel, local)
-import Z3Util (expr2ast, getValidityCounterExample)
+import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, local)
+import Z3Util (expr2ast)
 import Control.Monad.RWS (tell)
 import Data.DList (singleton)
 import Data.Bool (bool)
@@ -31,50 +31,34 @@ calcWLP tree = cata f tree [] id
       whenRs (dumpConditions . options) $
         tell (singleton $ "assumption: " ++ prettyishPrintExpr e')
       ast <- expr2ast (em e)
+      -- Add an extra assumption to the list.
       let next = map (\g -> g (ast : as) em) r
       testChildren next
-      -- foldrA (&&) True next
+    -- Not an assumption, add the predicate transformer for this statement.
     f (NodeF s r) as em = let next = map (\g -> g as $ em . wlpStmt s) r
                           in testChildren next
-                          -- in foldrA (&&) True next
+    -- End of the branch, construct negation of assertion, check for counterexample.
     f (TerminationF s) as em = do
       incrNumPaths
       let e' = em (wlpStmt s $ LitB True)
       whenRs (dumpConditions . options) $
         tell (singleton $ "goal: " ++ prettyishPrintExpr e')
       local $ do
-        -- return undefined
         ast <- mkNot =<< expr2ast e'
         assert =<< mkAnd (ast : as)
         (_res, model) <- getModel
         case model of
-          -- No counterexample found, check next WLP.
+          -- No counterexample found, this WLP is valid.
           Nothing -> return True
-          -- Counterexample found, stop here.
+          -- Counterexample found, reject this WLP.
           Just m -> do
             ex <- showModel m
             tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
             return False
 
--- foldrA :: (Foldable t, Applicative m) => (a -> b -> b) -> b -> t (m a) -> m b
--- foldrA f e = foldr (\c r -> f <$> c <*> r) (pure e)
-
 testChildren :: Monad m => [m Bool] -> m Bool
 testChildren []         = return True
 testChildren (mb : mbs) = bool (return False) (testChildren mbs) =<< mb
-  -- b <- mb
-  -- if b
-  --   then testChildren mbs
-  --   else return False
-
--- wlpTree :: ExecTree -> Expr -> Expr
--- wlpTree (Node s ts) q = wlpStmt s wlpChildrenCombined
---   where
---     wlpChildren = map (`wlpTree` q) ts
---     wlpChildrenCombined = foldr1 (BinopExpr And) wlpChildren
--- wlpTree (Termination s) q = wlpStmt s q
-
-
 
 wlpStmt :: ExecStmt -> Expr -> Expr
 wlpStmt ESkip             = id
@@ -82,7 +66,7 @@ wlpStmt ESkip             = id
 wlpStmt (EAssert e1)      = BinopExpr And e1
 wlpStmt (EAssume e1)      = BinopExpr Implication e1
 wlpStmt (EAssign s e)     = replace s e
-wlpStmt (EAAssign s i e)  = cata f --replace s (RepBy (Var s t) i e) --foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
+wlpStmt (EAAssign s i e)  = cata f
   where
     f :: ExprF Expr -> Expr
     f (VarF s' t) = replaceVar s' (RepBy (Var s t) i e) s t--foldExpr (defaultAlgebra {var=replaceVar s e})
