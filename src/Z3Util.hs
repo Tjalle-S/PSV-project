@@ -63,8 +63,8 @@ expr2astF (ArrayElemF a i  )    = join (mkSelect <$> a <*> i)
 expr2astF (RepByF     a i e)    = join (mkStore  <$> a <*> i <*> e)
 expr2astF (SizeOfF    a    )    = incrSize >> (mkIntVar =<< mkStringSymbol ('#' : a))
 
-expr2astF (ForallF name e)      = mkQuantifier mkForall name e
-expr2astF (ExistsF name e)      = mkQuantifier mkExists name e
+expr2astF (ForallF name e)      = mkQuantifier mkForallConst name e
+expr2astF (ExistsF name e)      = mkQuantifier mkExistsConst name e
 
 makeVar :: MonadZ3 m => String -> Type -> m AST
 makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
@@ -99,11 +99,17 @@ mkOp Alias            = optionalError -- Reference equality.
 uncurryList :: ([a] -> b) -> a -> a -> b
 uncurryList op l r = op [l, r]
 
-mkQuantifier :: MonadZ3 m => ([Pattern] -> [Symbol] -> [Sort] -> AST -> m AST) -> String -> m AST -> m AST
+-- mkQuantifier :: MonadZ3 m => ([Pattern] -> [Symbol] -> [Sort] -> AST -> m AST) -> String -> m AST -> m AST
+-- mkQuantifier q name e = do
+--   symb <- mkStringSymbol name
+--   sort <- mkIntSort
+--   q [] [symb] [sort] =<< e
+
+mkQuantifier :: MonadZ3 m => ([Pattern] -> [App] -> AST -> m AST) -> String -> m AST -> m AST
 mkQuantifier q name e = do
   symb <- mkStringSymbol name
-  sort <- mkIntSort
-  q [] [symb] [sort] =<< e
+  var  <- toApp =<< mkIntVar symb
+  q [] [var] =<< e
 
 incrSize :: (MonadState VState m) => m ()
 incrSize = modify' $ \v@VState { stats = s@Stats { formulaSize } } -> v { stats = s { formulaSize = formulaSize + 1 } }

@@ -2,18 +2,19 @@
 
 module WLP (makeWLPs, calcWLP) where
 
-import Expr ( Expr (..), ExprF(..), BinOp(..), Type )
+import Expr ( Expr (..), ExprF(..), BinOp(..), Type, prettyishPrintExpr )
 import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
-import Util ( optionalError, V, MonadG, incrNumPaths )
+import Util ( optionalError, V, MonadG, incrNumPaths, whenRs, ReaderData (..) )
 import TreeBuilder (replace)
 import Z3.Monad (MonadZ3, AST, mkNot, mkAnd, assert, getModel, showModel)
 import Z3Util (expr2ast, getValidityCounterExample)
 import Control.Monad.RWS (tell)
 import Data.DList (singleton)
 import Data.Bool (bool)
+import Cli (ArgData(dumpConditions))
 
 -- | Create a list of all WLP's of a program, one for each path (lazily).
 makeWLPs :: Expr -> ExecTree -> [Expr]
@@ -26,6 +27,9 @@ calcWLP :: (MonadZ3 m, MonadG m) => ExecTree -> m Bool
 calcWLP tree = cata f tree [] id
   where
     f (NodeF (EAssume e) r)      as em = do
+      let e' = em e
+      whenRs (dumpConditions . options) $
+        tell (singleton $ "assumption: " ++ prettyishPrintExpr e')
       ast <- expr2ast (em e)
       let next = map (\g -> g (ast : as) em) r
       testChildren next
@@ -35,7 +39,10 @@ calcWLP tree = cata f tree [] id
                           -- in foldrA (&&) True next
     f (TerminationF s) as em = do
       incrNumPaths
-      ast <- mkNot =<< expr2ast (em (wlpStmt s $ LitB True))
+      let e' = em (wlpStmt s $ LitB True)
+      whenRs (dumpConditions . options) $
+        tell (singleton $ "goal: " ++ prettyishPrintExpr e')
+      ast <- mkNot =<< expr2ast e'
       assert =<< mkAnd (ast : as)
       (_res, model) <- getModel
       case model of
