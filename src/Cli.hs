@@ -20,7 +20,7 @@ data ArgData = ArgData {
 }
 
 data HeuristicOptions = HeuristicOptions {
-  pruneInfeasible :: Bool
+  pruneInfeasible :: Int
 }
 
 -- | Parser for commandline options.
@@ -50,8 +50,10 @@ parseOptions = ArgData
   
 parseHeuristics :: Parser HeuristicOptions
 parseHeuristics = HeuristicOptions
-  <$> switch (
+  <$> option auto (
        long "prune-infeasible"
+    <> short 'p'
+    <> metavar "int"
     <> help "Attempt to prune infeasible paths")
 
 -- | Get all commandline options.

@@ -4,9 +4,9 @@ module Runner (run) where
 
 import GCLParser.GCLDatatype (Program)
 import Control.Monad.Writer (MonadWriter (tell))
-import Cli (ArgData (..))
+import Cli (ArgData (..), pruneInfeasible)
 import Expr (Expr(LitB))
-import WLP (makeWLPs, calcWLP)
+import WLP (makeWLPs, calcWLP, prunedCalcWLP)
 import TreeBuilder (progToExecMaxDepth)
 import Util (runV, ReaderData (..), incrNumPaths, Log, MonadG, VState, whenRs)
 import Z3.Monad (MonadZ3)
@@ -20,7 +20,10 @@ run args prog = do
 --   let wlps = makeWLPs (LitB True) (progToExecMaxDepth (maxLength args) prog)
 --   (res, st, logs) <- liftIO $ runV (ReaderData args) (testAllPaths wlps)
 --   return (res, st, logs)
-  liftIO $ runV (ReaderData args) (calcWLP $ progToExecMaxDepth (maxLength args) prog)
+  -- liftIO $ print (singleton $ show (progToExecMaxDepth (maxLength args) prog))
+  liftIO $ runV (ReaderData args) (prunedCalcWLP (pruneInfeasible (enabledHeuristics args)) $ progToExecMaxDepth (maxLength args) prog)
+
+-- (pruneInfeasible (enabledHeuristics args))
 
 testAllPaths :: (MonadZ3 m, MonadG m) => [Expr] -> m Bool
 testAllPaths []     = tell (singleton "Accept\n") >> return True
