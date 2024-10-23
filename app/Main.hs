@@ -20,9 +20,8 @@ import GHC.IsList (IsList(toList))
 main :: IO ()
 main = do
   command <- getOptions
-  -- args@ArgData{ .. } <- getOptions
   case command of
-    Version -> putStrLn "GLEE 1.0.0"
+    Version -> putStrLn "The (Glorious) GCL Logical Execution Engine, version 1.0.0"
     Args args@ArgData{..} -> do
       ast <- parseGCLfile fileName
       (st, timeUsed) <- withTimer $ do

@@ -30,7 +30,8 @@ parseOptions :: Parser Command
 parseOptions =  Args <$> (ArgData 
   <$> argument str (
       metavar "[SOURCE]"
-    <> help "GCL file to read")
+    <> help "GCL file to read"
+    <> action "file")
   <*> option auto (
        long "max-length"
     <> short 'k'
