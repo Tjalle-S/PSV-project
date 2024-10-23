@@ -22,6 +22,7 @@ run args prog = do
 --   return (res, st, logs)
   liftIO $ runV (ReaderData args) (calcWLP $ progToExecMaxDepth (maxLength args) prog)
 
+
 testAllPaths :: (MonadZ3 m, MonadG m) => [Expr] -> m Bool
 testAllPaths []     = tell (singleton "Accept\n") >> return True
 testAllPaths (e:es) = do

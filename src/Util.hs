@@ -2,11 +2,19 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Util (VState(..), Stats(..), V, runV, GT, MonadG, ReaderData(..), optionalError, incrNumPaths, isEnabled, Log, whenRs) where
+module Util (
+  VState(..), Stats(..), ReaderData(..), Log
+
+, V, runV
+, GT, MonadG
+
+, incrNumPaths, incrFormulaSize, incrNumPruned
+
+, isEnabled, whenRs, optionalError) where
 
 import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
-import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, modify', MonadReader, asks)
+import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, MonadReader, asks, modify)
 import Data.DList (DList)
 import Control.Monad (when)
 
@@ -58,8 +66,13 @@ emptyState = VState {
 optionalError :: a
 optionalError = error "Not implemented: optional assignment"
 
-incrNumPaths :: MonadState VState m => m ()
-incrNumPaths = modify' $ \v@VState { stats = s@Stats { inspectedPaths } } -> v { stats = s { inspectedPaths = inspectedPaths + 1 } }
+incrNumPaths, incrFormulaSize, incrNumPruned :: MonadState VState m => m ()
+incrNumPaths    = modify $ \v@VState { stats = s@Stats { inspectedPaths } }  ->
+  v { stats = s { inspectedPaths  = inspectedPaths  + 1 } }
+incrFormulaSize = modify $ \v@VState { stats = s@Stats { formulaSize } }     ->
+  v { stats = s { formulaSize     = formulaSize     + 1 } }
+incrNumPruned   = modify $ \v@VState { stats = s@Stats { infeasiblePaths } } ->
+  v { stats = s { infeasiblePaths = infeasiblePaths + 1 } }
 
 isEnabled :: (HeuristicOptions -> Bool) -> ReaderData -> Bool
 isEnabled f = (||) <$> enableAllHeuristics <*> f . enabledHeuristics <$> options
