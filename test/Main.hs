@@ -60,7 +60,7 @@ makeValid   = ("valid/" ++)
 makeInvalid = ("invalid/" ++)
 
 programs :: [String]
-programs = ["memberOf", "divByN", "pullUp"]
+programs = ["memberOf", "divByN", "pullUp", "bsort"]
 
 -- | Read a program with the given name, and replace N by the given constant.
 getProgram :: String -> Int -> IO Program
