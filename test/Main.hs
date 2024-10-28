@@ -43,12 +43,12 @@ makeAssertion expected mp = do
 defaultArgs :: ArgData
 defaultArgs = ArgData {
   fileName            = "" -- Not necessary.
-, maxLength           = 55
+, maxLength           = 75
 , showStats           = False
 , dumpConditions      = False
 , enableAllHeuristics = False
 , enabledHeuristics   = HeuristicOptions {
-    pruneInfeasible = 0
+    pruneInfeasible = 75
 }
 }
 

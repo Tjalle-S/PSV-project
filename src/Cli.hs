@@ -60,6 +60,7 @@ parseHeuristics = HeuristicOptions
   <$> option auto (
        long "prune-infeasible"
     <> short 'p'
+    <> value 0
     <> metavar "int"
     <> help "Attempt to prune infeasible paths")
 
