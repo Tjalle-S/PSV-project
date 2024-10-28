@@ -19,7 +19,6 @@ import GHC.IsList (IsList(toList))
 
 main :: IO ()
 main = do
-  -- args@ArgData{ .. } <- return ArgData{fileName="infeasible.gcl", maxLength=10, showStats=True, dumpConditions=True, enableAllHeuristics=True, enabledHeuristics=HeuristicOptions{pruneInfeasible=True}}
   args@ArgData{ .. } <- getOptions
   ast <- parseGCLfile fileName
   (st, timeUsed) <- withTimer $ do
