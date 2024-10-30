@@ -69,6 +69,66 @@ badExpr2goodExpr (P.NewStore _)       = optionalError -- Pointer types.
 badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
 badExpr2goodExpr P.LitNull            = optionalError -- Pointer types.
 
+-- simplifyExpr :: P.Expr -> State [(String,Type)] Expr
+-- simplifyExpr (P.BinopExpr op@P.And l r) | l == r     = return (LitB True)
+--                                          | otherwise  = BinopExpr op <$> badExpr2goodExpr l <*> badExpr2goodExpr r
+-- simplifyExpr _ = undefined
+
+simplifyExpr :: Expr -> Expr
+simplifyExpr = cata f 
+  where
+    f (OpNegF (OpNeg e)) = e
+
+    f (BinopExprF And (LitB True) (LitB True)) = LitB True
+    f (BinopExprF And (LitB True) r) = r 
+    f (BinopExprF And l (LitB True)) = l 
+    f (BinopExprF And (LitB False) _) = LitB False
+    f (BinopExprF And _ (LitB False)) = LitB False
+    
+    f (BinopExprF Or (LitB True) _) = LitB True
+    f (BinopExprF Or _ (LitB True)) = LitB True
+    f (BinopExprF Or (LitB False) r) = r 
+    f (BinopExprF Or l (LitB False)) = l
+
+    -- implications to disjunctive normal form (DNF)
+    f (BinopExprF Implication l r) = simplifyExpr $ BinopExpr Or (OpNeg  l) r  
+
+    f (BinopExprF LessThan (LitI l) (LitI r)) | l < r     = LitB True
+                                              | otherwise = LitB False 
+    f (BinopExprF LessThan l r)               | l == r    = LitB False
+                                              | otherwise = BinopExpr LessThanEqual l r       
+
+    f (BinopExprF LessThanEqual (LitI l) (LitI r))  | l <= r    = LitB True
+                                                    | otherwise = LitB False
+    f (BinopExprF LessThanEqual l r)                | l == r    = LitB True
+                                                    | otherwise = BinopExpr LessThanEqual l r
+                                                      
+    f (BinopExprF GreaterThan (LitI l) (LitI r))  | l > r     = LitB True
+                                                  | otherwise = LitB False   
+    f (BinopExprF GreaterThan l r)                | l == r    = LitB False
+                                                  | otherwise = BinopExpr LessThanEqual l r     
+
+    f (BinopExprF GreaterThanEqual (LitI l) (LitI r)) | l >= r    = LitB True
+                                                      | otherwise = LitB False
+    f (BinopExprF GreaterThanEqual l r)               | l == r    = LitB True
+                                                      | otherwise = BinopExpr LessThanEqual l r
+
+    f (BinopExprF Equal (LitI l) (LitI r))  | l == r    = LitB True
+                                            | otherwise = LitB False
+    f (BinopExprF Equal l r)                | l == r    = LitB True
+                                            | otherwise = BinopExpr Equal l r
+
+    f (BinopExprF Plus (LitI l) (LitI r)) = LitI (l+r)
+
+    f (BinopExprF Minus (LitI l) (LitI r)) = LitI (l-r)
+
+    f (BinopExprF Multiply (LitI l) (LitI r)) = LitI (l*r)
+
+    f (BinopExprF Divide (LitI l) (LitI r)) | r == 1    = LitI l
+                                            | otherwise = BinopExpr Divide (LitI l) (LitI r)
+
+    f e = embed e
+
 progToExecMaxDepth :: Int -> Program -> ExecTree
 progToExecMaxDepth d  = cut d . progToExec
 
@@ -174,7 +234,7 @@ loopInvariant inv c b _T assigned newvars newnewvars  = foldr1 treeConcat [initI
       validInv'= replaceVarsTree validInv assigned newvars
       rest = Node (EAssume (BinopExpr And inv (OpNeg c))) [_T]
       rest' = replaceVarsTree rest assigned newnewvars
-      
+
 --    replaceVw0wars Skip vars by = Skip
 --    replaceVars (Assert e) ((v,t):vars) (b:by) = Assert $ embed (replace v undefined undefined)
 
