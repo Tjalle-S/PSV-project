@@ -24,46 +24,48 @@ makeWLPs q = cata f
     f (TerminationF s) = [wlpStmt s q]
 
 prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
-prunedCalcWLP prune tree = cata f tree [] id
+prunedCalcWLP prune tree = cata f tree [] id 0
   where
-    f (NodeF (EAssume e) r) as em = do
-      -- tell (singleton "expression")
+    f (NodeF (EAssume e) r) as em d = do
+      let e' = em e
+      whenRs (dumpConditions . options) $
+        tell (singleton $ "assumption: " ++ prettyishPrintExpr e')
       ast <- expr2ast (em e)
-      -- tell (singleton $ show $ em e)
-      let next = map (\g -> g (ast : as) em) r
-      if prune <= length as then do testChildren next else do
+      let next = map (\g -> g (ast : as) em (d+1)) r
+      if prune <= d then do testChildren next else do
         _res <- checkAssumptions (ast : as)
         -- core <- getUnsatCore
-        -- tell (singleton $ show _res)
+        -- tell (singleton $ show core)
         case _res of
           -- Path is feasible, check further
           Sat -> do testChildren next
           -- Path is infeasible, do not check further
           Unsat -> do
             incrNumPruned
-            -- tell (singleton $ show (length as))
-            -- tell (singleton $ show $ em e)
             return True
           Undef -> undefined
       
       -- foldrA (&&) True next
-    f (NodeF s r) as em = let next = map (\g -> g as $ em . wlpStmt s) r
+    f (NodeF s r) as em d = let next = map (\g -> g as (em . wlpStmt s) (d+1)) r
                           in testChildren next
                           -- in foldrA (&&) True next
-    f (TerminationF s) as em = do
-      incrNumPaths     
-      -- tell (singleton $ show (em (wlpStmt s $ LitB True)))                                                                                                    
-      ast <- mkNot =<< expr2ast (em (wlpStmt s $ LitB True))
-      assert =<< mkAnd (ast : as)
-      (_res, model) <- getModel
-      case model of
-        -- No counterexample found, check next WLP.
-        Nothing -> return True
-        -- Counterexample found, stop here.
-        Just m -> do
-          ex <- showModel m
-          tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
-          return False
+    f (TerminationF s) as em _ = do
+      incrNumPaths
+      let e' = em (wlpStmt s $ LitB True)
+      whenRs (dumpConditions . options) $
+        tell (singleton $ "goal: " ++ prettyishPrintExpr e')
+      local $ do
+        ast <- mkNot =<< expr2ast e'
+        assert =<< mkAnd (ast : as)
+        (_res, model) <- getModel
+        case model of
+          -- No counterexample found, this WLP is valid.
+          Nothing -> return True
+          -- Counterexample found, reject this WLP.
+          Just m -> do
+            ex <- showModel m
+            tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
+            return False
 
 calcWLP :: (MonadZ3 m, MonadG m) => ExecTree -> m Bool
 calcWLP tree = cata f tree [] id

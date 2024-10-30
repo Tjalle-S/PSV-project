@@ -1,0 +1,10 @@
+Name,Mean (ps),2*Stdev (ps)
+All.Benchmarks.memberOf.N = 2,14347840234,1402594602
+All.Benchmarks.memberOf.N = 3,15140275859,729973824
+All.Benchmarks.memberOf.N = 4,19056590000,1427595238
+All.Benchmarks.divByN.N = 2,815843840000,58428143202
+All.Benchmarks.divByN.N = 3,688839740000,42713012734
+All.Benchmarks.divByN.N = 4,698507702500,36280627786
+All.Benchmarks.pullUp.N = 2,3069303910000,200866120582
+All.Benchmarks.pullUp.N = 3,3132239305000,59311211168
+All.Benchmarks.pullUp.N = 4,3226317480000,311018988240
