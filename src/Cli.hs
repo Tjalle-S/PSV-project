@@ -21,6 +21,7 @@ data ArgData = ArgData {
 
 data HeuristicOptions = HeuristicOptions {
   pruneInfeasible :: Int
+, checkInvariant  :: Bool
 }
 
 -- | Parser for commandline options.
@@ -57,6 +58,11 @@ parseHeuristics = HeuristicOptions
     <> value 0
     <> metavar "int"
     <> help "Attempt to prune infeasible paths")
+    <*> switch (
+       long "check-invariant"
+    <> short 'i'
+    <> help "Check annotated loop invariants"
+  )
 
 -- | Get all commandline options.
 getOptions :: IO ArgData

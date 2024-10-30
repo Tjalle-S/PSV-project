@@ -5,7 +5,7 @@ import GCLParser.GCLDatatype (Program)
 import GCLParser.Parser (parseGCLstring)
 import Test.Tasty hiding (defaultMain)
 import Test.Tasty.HUnit
-import Cli (ArgData(..), HeuristicOptions (HeuristicOptions, pruneInfeasible))
+import Cli (ArgData(..), HeuristicOptions(..))
 import Runner (run)
 import Data.Bool (bool)
 
@@ -43,12 +43,13 @@ makeAssertion expected mp = do
 defaultArgs :: ArgData
 defaultArgs = ArgData {
   fileName            = "" -- Not necessary.
-, maxLength           = 75
+, maxLength           = 50
 , showStats           = False
 , dumpConditions      = False
 , enableAllHeuristics = False
 , enabledHeuristics   = HeuristicOptions {
-    pruneInfeasible = 75
+    pruneInfeasible = 50
+  , checkInvariant  = False
 }
 }
 

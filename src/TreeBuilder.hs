@@ -14,7 +14,6 @@ import Data.Functor.Foldable (Recursive (cata), Corecursive (embed))
 import Expr ( Expr (..), ExprF(..) )
 import Util (optionalError)
 import Statement (ExecTree(..), ExecStmt(..), ExecTree(..))
-import Debug.Trace
 
 
 both :: (a->b) -> (a,a) -> (b,b)
@@ -44,13 +43,6 @@ addVar (s,t) = do
                   vars <- get
                   put ((s',t):vars)
                   return (s',t)
---copied from WLP
--- replace :: String -> Expr -> Expr -> Expr
--- replace s e1 = cata f
---   where
---     f :: ExprF Expr -> Expr
---     f (VarF s' t) =  replaceVar s' e1 s t --foldExpr (defaultAlgebra {var=replaceVar s e})
---     f e' = embed e'
 
 getVarStr :: P.Expr -> String
 getVarStr (P.Var s) = s
@@ -77,8 +69,8 @@ badExpr2goodExpr (P.NewStore _)       = optionalError -- Pointer types.
 badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
 badExpr2goodExpr P.LitNull            = optionalError -- Pointer types.
 
-progToExecMaxDepth :: Int -> Program -> ExecTree
-progToExecMaxDepth d  = cut d .{-traceShowId .-}   progToExec
+progToExecMaxDepth :: Bool -> Int -> Program -> ExecTree
+progToExecMaxDepth checkInv d  = cut d . progToExec checkInv
 
 cut :: Int -> ExecTree -> ExecTree
 cut d t = case cut' d t of
@@ -95,15 +87,15 @@ cut' d (Node s ts)       | d<0 || null ts'= Nothing
 cut' d (LoopInv t1 t2 from to) = do
                                    t1' <- cut' d t1
                                    t2' <- cut' d t2
-                                   let (rt1,rt2) = (replaceVarsTree t1' from to, replaceVarsTree t2' from to) in
-				     return $ Node ESkip [rt1,rt2]
+                                   let (rt1,rt2) = (replaceVarsTree t1' from to, replaceVarsTree t2' from to)
+                                   return $ Node ESkip [rt1,rt2]
 --TODO: Make it look better 
 
 varDeclsToTuples :: [VarDeclaration]-> Decls
 varDeclsToTuples = map (\(VarDeclaration s t)->(s,t))
 
-progToExec :: Program -> ExecTree
-progToExec Program {stmt = s, input = i, output = o} = evalState (stmtToExec s) (varDeclsToTuples $ i ++ o)
+progToExec :: Bool -> Program -> ExecTree
+progToExec checkInv Program {stmt = s, input = i, output = o} = evalState (stmtToExec checkInv s) (varDeclsToTuples $ i ++ o)
 
 treeConcat :: ExecTree -> ExecTree -> ExecTree
 treeConcat (Node e ts)     t2 = Node e (map (`treeConcat` t2) ts)
@@ -113,16 +105,16 @@ treeConcat (LoopInv t1 t2 from to) t3 = LoopInv t1 (treeConcat t2 t3) from to
 makeTerminate :: (Expr -> ExecStmt) -> P.Expr -> State Decls ExecTree
 makeTerminate s e = Termination . s <$> badExpr2goodExpr e
 
-stmtToExec :: Stmt -> State Decls ExecTree
-stmtToExec Skip             = return $ Termination ESkip
-stmtToExec (Assert e)       = makeTerminate EAssert     e
-stmtToExec (Assume e)       = makeTerminate EAssume     e
-stmtToExec (Assign s e)     = makeTerminate (EAssign s) e
-stmtToExec (AAssign s i e)  = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
-stmtToExec (DrefAssign s e) = makeTerminate (EDrefAssign s) e
+stmtToExec :: Bool -> Stmt -> State Decls ExecTree
+stmtToExec _ Skip             = return $ Termination ESkip
+stmtToExec _ (Assert e)       = makeTerminate EAssert     e
+stmtToExec _ (Assume e)       = makeTerminate EAssume     e
+stmtToExec _ (Assign s e)     = makeTerminate (EAssign s) e
+stmtToExec _ (AAssign s i e)  = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
+stmtToExec _ (DrefAssign s e) = makeTerminate (EDrefAssign s) e
 
-stmtToExec (Seq (Assert inv) (While c b)) = stmtToExec $ Seq (Assert inv) (Seq (While c b) Skip)
-stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) =  loopInvariant <$> badExpr2goodExpr inv <*> badExpr2goodExpr c <*> stmtToExec b <*> stmtToExec _T <*> assigned <*> (mapM addVar =<< assigned)
+stmtToExec checkInv (Seq (Assert inv) (While c b))          = stmtToExec checkInv $ Seq (Assert inv) (Seq (While c b) Skip)
+stmtToExec True     (Seq (Assert inv) (Seq (While c b) _T)) = loopInvariant <$> badExpr2goodExpr inv <*> badExpr2goodExpr c <*> stmtToExec True b <*> stmtToExec True _T <*> assigned <*> (mapM addVar =<< assigned)
   where
     assigned :: State Decls Decls
     assigned = gets (getAssigned b)
@@ -143,21 +135,21 @@ stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) =  loopInvariant <$> badExpr2
         -- For the loop invariant, we want to be able to see when an assert comes before
         -- a while loop. For this we assume that statement sequences are in normal
         -- form.
-stmtToExec (Seq (Seq _ _) _)    = error "is not normalized"
-stmtToExec (Seq s1 s2)          = treeConcat <$> stmtToExec s1 <*> stmtToExec s2
-stmtToExec (IfThenElse e s1 s2) = do
+stmtToExec _        (Seq (Seq _ _) _)    = error "is not normalized"
+stmtToExec checkInv (Seq s1 s2)          = treeConcat <$> stmtToExec checkInv s1 <*> stmtToExec checkInv s2
+stmtToExec checkInv (IfThenElse e s1 s2) = do
                                     e' <- badExpr2goodExpr e
-                                    s1'<- stmtToExec s1
-                                    s2'<- stmtToExec s2
+                                    s1'<- stmtToExec checkInv s1
+                                    s2'<- stmtToExec checkInv s2
                                     return $ Node ESkip [Node (EAssume e') [s1'], Node (EAssume $ OpNeg e') [s2']]
-stmtToExec (While e s)          = whileExec <$> badExpr2goodExpr e <*> stmtToExec s
+stmtToExec checkInv (While e s)          = whileExec <$> badExpr2goodExpr e <*> stmtToExec checkInv s
   where
     whileExec cond body = Node ESkip [Node (EAssume cond) [treeConcat body (whileExec cond body)],Termination (EAssume $ OpNeg cond)]
-stmtToExec (Block v s)          = do
+stmtToExec checkInv (Block v s)          = do
                                     v' <- mapM addVar (varDeclsToTuples v)
-                                    t  <- stmtToExec s
+                                    t  <- stmtToExec checkInv s
                                     return $ replaceVarsTree t (varDeclsToTuples v) v'
-stmtToExec (TryCatch {})     = optionalError -- Exception handling.
+stmtToExec _ (TryCatch {})     = optionalError -- Exception handling.
 --TODO: Make Tree fold
 replaceVarsTree :: ExecTree -> Decls -> Decls -> ExecTree
 replaceVarsTree (Node s c)      v by = Node        (replaceVarsStmt s v by) (map (\t -> replaceVarsTree t v by) c)
@@ -182,8 +174,8 @@ replaceVarsStrT :: Decl -> Decls -> Decls -> Decl
 replaceVarsStrT d v by = foldl replaceVarsStrTSingle d (zip v by)
 
 replaceVarsStrTSingle :: Decl -> (Decl, Decl) -> Decl
-replaceVarsStrTSingle (s1, t1) ((s2, t2),(s3, t3)) | s1 == s2  = (s3,t3)
-                                                   | otherwise = (s1,t1)
+replaceVarsStrTSingle (s1, t1) ((s2, _),(s3, t3)) | s1 == s2  = (s3,t3)
+                                                  | otherwise = (s1,t1)
 replaceVars:: Expr -> Decls -> Decls -> Expr
 replaceVars e v by = cata f e
   where

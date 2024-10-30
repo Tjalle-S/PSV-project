@@ -15,7 +15,6 @@ import Control.Monad.RWS (tell)
 import Data.DList (singleton)
 import Data.Bool (bool)
 import Cli (ArgData(dumpConditions))
-import Debug.Trace
 
 prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
 prunedCalcWLP prune tree = cata f tree [] id 0
@@ -54,6 +53,7 @@ prunedCalcWLP prune tree = cata f tree [] id 0
             ex <- showModel m
             tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
             return False
+    f (LoopInvF {}) _ _ _ = error "Unreachable: loop invariants removed after cut."
 
 testChildren :: Monad m => [m Bool] -> m Bool
 testChildren []         = return True
