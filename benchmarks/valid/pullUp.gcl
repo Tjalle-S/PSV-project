@@ -14,7 +14,7 @@ pullUp(step:int , a:[]int | b:[]int) {
 
    var k:int {
      k := 1 ;
-     assert a[k] >= a[0] + k && k <= N-1 ;
+     assert a[k] >= a[0] + k && k <= N-1 && #a=N ;
      while k < #a - 1 do {
        if a[k] >= a[k+1]
          then { a[k+1] := a[k] + step }

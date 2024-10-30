@@ -1,0 +1,48 @@
+Before pull
+
+  Benchmark
+    memberOf
+      N = 2: OK
+        10.6 ms ± 860 μs
+      N = 3: OK
+        10.5 ms ± 736 μs
+      N = 4: OK
+        10.5 ms ± 690 μs
+    divByN
+      N = 2: OK
+        505  ms ±  35 ms
+      N = 3: OK
+        515  ms ±  35 ms
+      N = 4: OK
+        513  ms ±  26 ms
+    pullUp
+      N = 2: OK
+        2.439 s ±  50 ms
+      N = 3: OK
+        2.391 s ± 167 ms
+      N = 4: OK
+        2.505 s ± 207 ms
+
+  Benchmarks
+    memberOf
+      N = 2: OK
+        14.1 ms ± 252 μs
+      N = 3: OK
+        14.3 ms ± 1.2 ms
+      N = 4: OK
+        14.2 ms ± 1.2 ms
+    divByN
+      N = 2: OK
+        20.4 ms ± 859 μs
+      N = 3: OK
+        18.1 ms ± 1.6 ms
+      N = 4: OK
+        17.5 ms ± 1.2 ms
+    pullUp
+      N = 2: OK
+        9.82 ms ± 751 μs
+      N = 3: OK
+        15.2 ms ± 1.1 ms
+      N = 4: OK
+        28.9 ms ± 2.8 ms
+

@@ -15,6 +15,7 @@ import Control.Monad.RWS (tell)
 import Data.DList (singleton)
 import Data.Bool (bool)
 import Cli (ArgData(dumpConditions))
+import Debug.Trace
 
 prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
 prunedCalcWLP prune tree = cata f tree [] id 0
