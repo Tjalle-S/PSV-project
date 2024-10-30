@@ -1,8 +1,6 @@
-module Cli (getOptions, ArgData(..), Command(..), HeuristicOptions(..)) where
+module Cli (getOptions, ArgData(..), HeuristicOptions(..)) where
 
 import Options.Applicative
-
-data Command = Version | Args ArgData
 
 -- | Passed command-line options.
 data ArgData = ArgData {
@@ -26,8 +24,8 @@ data HeuristicOptions = HeuristicOptions {
 }
 
 -- | Parser for commandline options.
-parseOptions :: Parser Command
-parseOptions =  Args <$> (ArgData 
+parseOptions :: Parser ArgData
+parseOptions =  ArgData 
   <$> argument str (
       metavar "[SOURCE]"
     <> help "GCL file to read"
@@ -49,11 +47,7 @@ parseOptions =  Args <$> (ArgData
        long "optimize"
     <> short 'O'
     <> help "Enable all heuristics")
-  <*> parseHeuristics)
-  <|> Version <$ switch (
-       long "version"
-    <> help "Show the version of GLEE"
-  )
+  <*> parseHeuristics
   
 parseHeuristics :: Parser HeuristicOptions
 parseHeuristics = HeuristicOptions
@@ -65,7 +59,10 @@ parseHeuristics = HeuristicOptions
     <> help "Attempt to prune infeasible paths")
 
 -- | Get all commandline options.
-getOptions :: IO Command
+getOptions :: IO ArgData
 getOptions = execParser $ info
-  (parseOptions <**> helper) $ fullDesc
+  (parseOptions <**> helper <**> simpleVersioner versionString) $ fullDesc
     <> progDesc "GCL program verifier using wlp-based bounded symbolic execution"
+
+versionString :: String
+versionString = "The (Glorious) GCL Logical Execution Engine, version 1.0.0"
