@@ -22,7 +22,6 @@ import Control.Monad (when)
 
 data ReaderData = ReaderData {
   options :: ArgData
--- , vars :: Map String Symbol
 }
 
 data VState = VState {
@@ -34,7 +33,7 @@ data Stats = Stats {
   -- | Total number of inspected paths.
   inspectedPaths  :: Int
   -- | Total number of paths pruned due to being infeasible.
-, infeasiblePaths :: Int
+, prunedBranches :: Int
   -- | Total size of formulae to verify.
 , formulaSize     :: Int
 -- Note that total computation time does not need to be kept as state.
@@ -57,7 +56,7 @@ emptyState :: VState
 emptyState = VState {
   stats = Stats {
     inspectedPaths  = 0
-  , infeasiblePaths = 0
+  , prunedBranches = 0
   , formulaSize     = 0
   }
 }
@@ -71,8 +70,8 @@ incrNumPaths    = modify $ \v@VState { stats = s@Stats { inspectedPaths } }  ->
   v { stats = s { inspectedPaths  = inspectedPaths  + 1 } }
 incrFormulaSize = modify $ \v@VState { stats = s@Stats { formulaSize } }     ->
   v { stats = s { formulaSize     = formulaSize     + 1 } }
-incrNumPruned   = modify $ \v@VState { stats = s@Stats { infeasiblePaths } } ->
-  v { stats = s { infeasiblePaths = infeasiblePaths + 1 } }
+incrNumPruned   = modify $ \v@VState { stats = s@Stats { prunedBranches } } ->
+  v { stats = s { prunedBranches = prunedBranches + 1 } }
 
 isEnabled :: (HeuristicOptions -> Bool) -> ReaderData -> Bool
 isEnabled f = (||) <$> enableAllHeuristics <*> f . enabledHeuristics <$> options
