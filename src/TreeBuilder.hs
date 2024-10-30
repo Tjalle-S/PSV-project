@@ -14,6 +14,11 @@ import Data.Functor.Foldable (Recursive (cata), Corecursive (embed))
 import Expr ( Expr (..), ExprF(..) )
 import Util (optionalError)
 import Statement (ExecTree(..), ExecStmt(..), ExecTree(..))
+import Debug.Trace
+
+
+both :: (a->b) -> (a,a) -> (b,b)
+both f (x,y) = (f x,f y)
 
 type Decl  = (String, Type)
 type Decls = [Decl]
@@ -73,7 +78,7 @@ badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
 badExpr2goodExpr P.LitNull            = optionalError -- Pointer types.
 
 progToExecMaxDepth :: Int -> Program -> ExecTree
-progToExecMaxDepth d  = cut d . progToExec
+progToExecMaxDepth d  = cut d .{-traceShowId .-}   progToExec
 
 cut :: Int -> ExecTree -> ExecTree
 cut d t = case cut' d t of
@@ -87,6 +92,12 @@ cut' d (Node s ts)       | d<0 || null ts'= Nothing
                          | otherwise      = Just (Node s ts')
   where
     ts' = mapMaybe (cut' (d-1)) ts
+cut' d (LoopInv t1 t2 from to) = do
+                                   t1' <- cut' d t1
+                                   t2' <- cut' d t2
+                                   let (rt1,rt2) = (replaceVarsTree t1' from to, replaceVarsTree t2' from to) in
+				     return $ Node ESkip [rt1,rt2]
+--TODO: Make it look better 
 
 varDeclsToTuples :: [VarDeclaration]-> Decls
 varDeclsToTuples = map (\(VarDeclaration s t)->(s,t))
@@ -97,6 +108,7 @@ progToExec Program {stmt = s, input = i, output = o} = evalState (stmtToExec s) 
 treeConcat :: ExecTree -> ExecTree -> ExecTree
 treeConcat (Node e ts)     t2 = Node e (map (`treeConcat` t2) ts)
 treeConcat (Termination e) t2 = Node e [t2]
+treeConcat (LoopInv t1 t2 from to) t3 = LoopInv t1 (treeConcat t2 t3) from to
 
 makeTerminate :: (Expr -> ExecStmt) -> P.Expr -> State Decls ExecTree
 makeTerminate s e = Termination . s <$> badExpr2goodExpr e
@@ -109,17 +121,19 @@ stmtToExec (Assign s e)     = makeTerminate (EAssign s) e
 stmtToExec (AAssign s i e)  = Termination <$> (EAAssign s <$> badExpr2goodExpr i <*> badExpr2goodExpr e)
 stmtToExec (DrefAssign s e) = makeTerminate (EDrefAssign s) e
 
-stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) = loopInvariant <$> badExpr2goodExpr inv <*> badExpr2goodExpr c <*> stmtToExec b <*> stmtToExec _T <*> assigned <*> (mapM addVar =<< assigned) <*> (mapM addVar =<< assigned)
+stmtToExec (Seq (Assert inv) (While c b)) = stmtToExec $ Seq (Assert inv) (Seq (While c b) Skip)
+stmtToExec (Seq (Assert inv) (Seq (While c b) _T)) =  loopInvariant <$> badExpr2goodExpr inv <*> badExpr2goodExpr c <*> stmtToExec b <*> stmtToExec _T <*> assigned <*> (mapM addVar =<< assigned)
   where
     assigned :: State Decls Decls
     assigned = gets (getAssigned b)
 
-    getAssigned (Seq s1 s2)          vars = union (getAssigned s1 vars) (getAssigned s2 vars)
+    getAssigned (Seq s1 s2)          vars = union ( getAssigned s1 vars) (getAssigned s2 vars)
     getAssigned (Assign str _)       vars = assign str vars
     getAssigned (AAssign str _ _)    vars = assign str vars
     getAssigned (DrefAssign str _)   vars = assign str vars
     getAssigned (IfThenElse _ s1 s2) vars = union (getAssigned s1 vars) (getAssigned s2 vars)
     getAssigned (While _ s)          vars = getAssigned s vars
+    getAssigned (Block _ s)          vars = getAssigned s vars
     getAssigned _ _                       = []
     assign :: String -> Decls -> Decls
     assign str var = case lookup str var of
@@ -148,6 +162,10 @@ stmtToExec (TryCatch {})     = optionalError -- Exception handling.
 replaceVarsTree :: ExecTree -> Decls -> Decls -> ExecTree
 replaceVarsTree (Node s c)      v by = Node        (replaceVarsStmt s v by) (map (\t -> replaceVarsTree t v by) c)
 replaceVarsTree (Termination s) v by = Termination (replaceVarsStmt s v by)
+replaceVarsTree (LoopInv t1 t2 from to) v by = LoopInv t1' t2' from to
+  where
+    (t1',t2') = both (\t -> replaceVarsTree t v' by') (t1,t2)
+    (v',by')  = unzip $ filter (\(var,_) -> not (var `elem` from)) $ zip v by
 
 replaceVarsStmt :: ExecStmt -> Decls -> Decls -> ExecStmt
 replaceVarsStmt ESkip              _ _  = ESkip
@@ -174,14 +192,14 @@ replaceVars e v by = cata f e
     f (SizeOfF s) = SizeOf (replaceVarsStr s v by)
     f e'          = embed e'
 
-loopInvariant::Expr->Expr->ExecTree->ExecTree->Decls->Decls->Decls->ExecTree
-loopInvariant inv c b _T assigned newvars newnewvars  = foldr1 treeConcat [initInv,validInv',rest']
+loopInvariant::Expr->Expr->ExecTree->ExecTree->Decls->Decls->ExecTree
+loopInvariant inv c b _T assigned newvars = Node (EAssert inv) [LoopInv validInv rest assigned newvars]
   where
-      initInv = Termination $ EAssert inv
+      --initInv = Termination $ EAssert inv
       validInv = foldr1 treeConcat [Termination $ EAssume (BinopExpr And inv c),b, Termination $  EAssert inv]
-      validInv'= replaceVarsTree validInv assigned newvars
+      --validInv'= ReplaceVars validInv assigned newvars
       rest = Node (EAssume (BinopExpr And inv (OpNeg c))) [_T]
-      rest' = replaceVarsTree rest assigned newnewvars
+      --rest' = ReplaceVars rest assigned newvars
 
 --    replaceVw0wars Skip vars by = Skip
 --    replaceVars (Assert e) ((v,t):vars) (b:by) = Assert $ embed (replace v undefined undefined)

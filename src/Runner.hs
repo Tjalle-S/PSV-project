@@ -17,9 +17,9 @@ import Control.Monad.State
 
 run :: MonadIO m => ArgData -> Program -> m (Bool, VState, Log)
 run args prog = do
---   let wlps = makeWLPs (LitB True) (progToExecMaxDepth (maxLength args) prog)
---   (res, st, logs) <- liftIO $ runV (ReaderData args) (testAllPaths wlps)
---   return (res, st, logs)
+   --let wlps = makeWLPs (LitB True) (progToExecMaxDepth (maxLength args) prog)
+   --(res, st, logs) <- liftIO $ runV (ReaderData args) (testAllPaths wlps)
+   --return (res, st, logs)
   liftIO $ runV (ReaderData args) (calcWLP $ progToExecMaxDepth (maxLength args) prog)
 
 

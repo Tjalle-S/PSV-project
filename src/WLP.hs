@@ -15,10 +15,11 @@ import Control.Monad.RWS (tell)
 import Data.DList (singleton)
 import Data.Bool (bool)
 import Cli (ArgData(dumpConditions))
+import Debug.Trace
 
 -- | Create a list of all WLP's of a program, one for each path (lazily).
 makeWLPs :: Expr -> ExecTree -> [Expr]
-makeWLPs q = cata f
+makeWLPs q = traceShowId . cata f
   where
     f (NodeF s ts)     = map (wlpStmt s) (concat ts)
     f (TerminationF s) = [wlpStmt s q]
