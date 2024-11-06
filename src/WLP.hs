@@ -2,19 +2,18 @@
 
 module WLP (makeWLPs, calcWLP, prunedCalcWLP) where
 
-import Expr ( Expr (..), ExprF(..), BinOp(..), Type, prettyishPrintExpr )
+import Expr ( Expr (..), ExprF(..), BinOp(..), Type )
 import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
-import Util ( optionalError, MonadG, incrNumPaths, whenRs, ReaderData (..), incrNumPruned )
+import Util ( optionalError, V, MonadG, incrNumPaths, incrNumInfeasible)
 import TreeBuilder (replace)
-import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, local, checkAssumptions, getUnsatCore, Result (Sat, Unsat, Undef))
-import Z3Util (expr2ast)
+import Z3.Monad (MonadZ3, AST, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, getUnsatCore, Result (Sat, Unsat, Undef), local)
+import Z3Util (expr2ast, getValidityCounterExample)
 import Control.Monad.RWS (tell)
 import Data.DList (singleton)
 import Data.Bool (bool)
-import Cli (ArgData(dumpConditions))
 
 -- | Create a list of all WLP's of a program, one for each path (lazily).
 makeWLPs :: Expr -> ExecTree -> [Expr]
@@ -24,44 +23,43 @@ makeWLPs q = cata f
     f (TerminationF s) = [wlpStmt s q]
 
 prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
-prunedCalcWLP prune tree = cata f tree [] id 0
+prunedCalcWLP prune tree = cata f tree [] id
   where
-    f (NodeF (EAssume e) r) as em d = do
-      let e' = em e
-      whenRs (dumpConditions . options) $
-        tell (singleton $ "assumption: " ++ prettyishPrintExpr e')
+    f (NodeF (EAssume e) r) as em = do
+      -- tell (singleton "expression")
       ast <- expr2ast (em e)
-      let next = map (\g -> g (ast : as) em (d+1)) r
-      if prune <= d then do testChildren next else do
+      -- tell (singleton $ show $ em e)
+      let next = map (\g -> g (ast : as) em) r
+      if prune <= length as then do testChildren next else do
         _res <- checkAssumptions (ast : as)
         -- core <- getUnsatCore
-        -- tell (singleton $ show core)
+        -- tell (singleton $ show _res)
         case _res of
           -- Path is feasible, check further
           Sat -> do testChildren next
           -- Path is infeasible, do not check further
           Unsat -> do
-            incrNumPruned
+            incrNumInfeasible
+            -- tell (singleton $ show (length as))
+            -- tell (singleton $ show $ em e)
             return True
           Undef -> undefined
       
       -- foldrA (&&) True next
-    f (NodeF s r) as em d = let next = map (\g -> g as (em . wlpStmt s) (d+1)) r
+    f (NodeF s r) as em = let next = map (\g -> g as $ em . wlpStmt s) r
                           in testChildren next
                           -- in foldrA (&&) True next
-    f (TerminationF s) as em _ = do
-      incrNumPaths
-      let e' = em (wlpStmt s $ LitB True)
-      whenRs (dumpConditions . options) $
-        tell (singleton $ "goal: " ++ prettyishPrintExpr e')
+    f (TerminationF s) as em = do
+      incrNumPaths     
+      -- tell (singleton $ show (em (wlpStmt s $ LitB True)))                                                                                                    
       local $ do
-        ast <- mkNot =<< expr2ast e'
+        ast <- mkNot =<< expr2ast (em (wlpStmt s $ LitB True))
         assert =<< mkAnd (ast : as)
         (_res, model) <- getModel
         case model of
-          -- No counterexample found, this WLP is valid.
+          -- No counterexample found, check next WLP.
           Nothing -> return True
-          -- Counterexample found, reject this WLP.
+          -- Counterexample found, stop here.
           Just m -> do
             ex <- showModel m
             tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
@@ -71,38 +69,49 @@ calcWLP :: (MonadZ3 m, MonadG m) => ExecTree -> m Bool
 calcWLP tree = cata f tree [] id
   where
     f (NodeF (EAssume e) r)      as em = do
-      let e' = em e
-      whenRs (dumpConditions . options) $
-        tell (singleton $ "assumption: " ++ prettyishPrintExpr e')
       ast <- expr2ast (em e)
-      -- Add an extra assumption to the list.
       let next = map (\g -> g (ast : as) em) r
       testChildren next
-    -- Not an assumption, add the predicate transformer for this statement.
+      -- foldrA (&&) True next
     f (NodeF s r) as em = let next = map (\g -> g as $ em . wlpStmt s) r
                           in testChildren next
-    -- End of the branch, construct negation of assertion, check for counterexample.
+                          -- in foldrA (&&) True next
     f (TerminationF s) as em = do
-      incrNumPaths
-      let e' = em (wlpStmt s $ LitB True)
-      whenRs (dumpConditions . options) $
-        tell (singleton $ "goal: " ++ prettyishPrintExpr e')
-      local $ do
-        ast <- mkNot =<< expr2ast e'
-        assert =<< mkAnd (ast : as)
-        (_res, model) <- getModel
-        case model of
-          -- No counterexample found, this WLP is valid.
-          Nothing -> return True
-          -- Counterexample found, reject this WLP.
-          Just m -> do
-            ex <- showModel m
-            tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
-            return False
+      incrNumPaths                                                                                                         
+      ast <- mkNot =<< expr2ast (em (wlpStmt s $ LitB True))
+      assert =<< mkAnd (ast : as)
+      (_res, model) <- getModel
+      core <- getUnsatCore
+      tell (singleton $ show _res)
+      tell (singleton $ show core)
+      case model of
+        -- No counterexample found, check next WLP.
+        Nothing -> return True
+        -- Counterexample found, stop here.
+        Just m -> do
+          ex <- showModel m
+          tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
+          return False
+
+-- foldrA :: (Foldable t, Applicative m) => (a -> b -> b) -> b -> t (m a) -> m b
+-- foldrA f e = foldr (\c r -> f <$> c <*> r) (pure e)
 
 testChildren :: Monad m => [m Bool] -> m Bool
 testChildren []         = return True
 testChildren (mb : mbs) = bool (return False) (testChildren mbs) =<< mb
+  -- b <- mb
+  -- if b
+  --   then testChildren mbs
+  --   else return False
+
+-- wlpTree :: ExecTree -> Expr -> Expr
+-- wlpTree (Node s ts) q = wlpStmt s wlpChildrenCombined
+--   where
+--     wlpChildren = map (`wlpTree` q) ts
+--     wlpChildrenCombined = foldr1 (BinopExpr And) wlpChildren
+-- wlpTree (Termination s) q = wlpStmt s q
+
+
 
 wlpStmt :: ExecStmt -> Expr -> Expr
 wlpStmt ESkip             = id
@@ -110,7 +119,7 @@ wlpStmt ESkip             = id
 wlpStmt (EAssert e1)      = BinopExpr And e1
 wlpStmt (EAssume e1)      = BinopExpr Implication e1
 wlpStmt (EAssign s e)     = replace s e
-wlpStmt (EAAssign s i e)  = cata f
+wlpStmt (EAAssign s i e)  = cata f --replace s (RepBy (Var s t) i e) --foldExpr (defaultAlgebra {var=replaceVar s (RepBy (Var s) i e)})
   where
     f :: ExprF Expr -> Expr
     f (VarF s' t) = replaceVar s' (RepBy (Var s t) i e) s t--foldExpr (defaultAlgebra {var=replaceVar s e})

@@ -25,7 +25,6 @@ run args prog = do
 
 -- (pruneInfeasible (enabledHeuristics args))
 
-
 testAllPaths :: (MonadZ3 m, MonadG m) => [Expr] -> m Bool
 testAllPaths []     = tell (singleton "Accept\n") >> return True
 testAllPaths (e:es) = do

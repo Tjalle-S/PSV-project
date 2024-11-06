@@ -4,7 +4,7 @@ version:            0.1.0.0
 build-type:         Simple
 
 
-library libglee
+library lib-verifier
   ghc-options:      -Wall -O2
 
   exposed-modules:  Cli
@@ -24,7 +24,7 @@ library libglee
                   , optparse-applicative  ^>= 0.18.1
                   , mtl                   ^>= 2.2.2
                   , recursion-schemes     ^>= 5.2.3
-                  , dlist                 ^>= 1.0
+                  , dlist
                   , GCLparser
 
   hs-source-dirs:   src
@@ -32,17 +32,17 @@ library libglee
   default-language: Haskell2010
 
 
-executable glee-test
+executable test-verifier
   ghc-options:      -Wall -O2 -fproc-alignment=64
 
   main-is:          Main.hs
 
   build-depends:    base          ^>= 4.17.2.1
-                  , mtl           ^>= 2.2.2
+                  , mtl
                   , tasty         ^>= 1.5
-                  , tasty-hunit   ^>= 0.10.2
+                  , tasty-hunit
                   , tasty-bench   ^>= 0.4
-                  , libglee
+                  , lib-verifier
                   , GCLparser
 
   -- other-extensions:
@@ -52,7 +52,7 @@ executable glee-test
   default-language: Haskell2010
 
 
-executable glee
+executable wlp-verifier
   ghc-options:      -Wall -O2
 
   main-is:          Main.hs
@@ -62,7 +62,7 @@ executable glee
                   , mtl           ^>= 2.2.2
                   , pretty-simple ^>= 4.1.2
                   , time          ^>= 1.12.2
-                  , libglee
+                  , lib-verifier
                   , GCLparser
 
   -- other-extensions:
