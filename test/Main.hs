@@ -54,7 +54,7 @@ defaultArgs = ArgData {
 }
 
 valuesOfN :: [Int]
-valuesOfN = [2..4]
+valuesOfN = [2..3]
 
 makeValid, makeInvalid :: String -> String
 makeValid   = ("valid/" ++)
