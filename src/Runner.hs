@@ -15,7 +15,7 @@ run args prog = liftIO $ runV
   (ReaderData args)
   (prunedCalcWLP
     (pruneInfeasible (enabledHeuristics args)) $
-    applyWhen (simplifyExpressions (enabledHeuristics args)) simplifyTree
+    applyWhen (simplifyExpressions (enabledHeuristics args)) simplifyTree $
     progToExecMaxDepth
       (enableAllHeuristics args || checkInvariant (enabledHeuristics args))
       (maxLength args) prog)
