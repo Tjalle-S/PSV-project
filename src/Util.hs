@@ -10,7 +10,7 @@ module Util (
 
 , incrNumPaths, incrFormulaSize, incrNumPruned
 
-, isEnabled, whenRs, optionalError) where
+, isEnabled, whenRs, optionalError, applyWhen) where
 
 import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
@@ -81,3 +81,7 @@ whenRs :: (MonadReader env m) => (env -> Bool) -> m () -> m ()
 whenRs getC a = do
   c <- asks getC
   when c a
+
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True f a = f a
+applyWhen _    _ a = a

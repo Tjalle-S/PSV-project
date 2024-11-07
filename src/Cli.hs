@@ -22,7 +22,8 @@ data ArgData = ArgData {
 }
 
 data HeuristicOptions = HeuristicOptions {
-  pruneInfeasible :: Int
+  pruneInfeasible :: Int,
+  simplifyExpressions :: Bool
 }
 
 -- | Parser for commandline options.
@@ -63,6 +64,10 @@ parseHeuristics = HeuristicOptions
     <> value 0
     <> metavar "int"
     <> help "Attempt to prune infeasible paths")
+  <*> switch (
+       long "simplify-expressions"
+    <> short 'e'
+    <> help "Simplify expressions once the tree is built")
 
 -- | Get all commandline options.
 getOptions :: IO Command

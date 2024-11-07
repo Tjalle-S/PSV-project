@@ -1,6 +1,6 @@
 E ( x : int | y : int ){
-  assume 1 < x ;
-  assume 3 > x ;
+  assume 3 - 2 - 1 <= x ;
+  assume x < 3 ;
   y := x ;
-  assert y =2
+  assert y = 2
 }
