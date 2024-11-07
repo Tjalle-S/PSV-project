@@ -1,1 +1,0 @@
-blockShadow(k: int  | ) { var k:int { k := 1 } }

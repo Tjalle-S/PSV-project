@@ -11,5 +11,11 @@ import Z3Instance ()
 import Control.Monad.IO.Class (MonadIO (..))
 
 run :: MonadIO m => ArgData -> Program -> m (Bool, VState, Log)
-run args prog = 
-  liftIO $ runV (ReaderData args) (prunedCalcWLP (pruneInfeasible (enabledHeuristics args)) $ applyWhen (simplifyExpressions (enabledHeuristics args)) simplifyTree (progToExecMaxDepth (maxLength args) prog))
+run args prog = liftIO $ runV
+  (ReaderData args)
+  (prunedCalcWLP
+    (pruneInfeasible (enabledHeuristics args)) $
+    applyWhen (simplifyExpressions (enabledHeuristics args)) simplifyTree
+    progToExecMaxDepth
+      (enableAllHeuristics args || checkInvariant (enabledHeuristics args))
+      (maxLength args) prog)

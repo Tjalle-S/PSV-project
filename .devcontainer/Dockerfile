@@ -14,6 +14,8 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+RUN chmod a+rwx /etc/bash_completion.d
+
 # Create the vscode user.
 ARG USERNAME=vscode
 RUN adduser ${USERNAME}
