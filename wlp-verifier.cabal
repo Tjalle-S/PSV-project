@@ -16,6 +16,7 @@ library libglee
                   , Z3Util
                   , Z3Instance
                   , Runner
+                  , Builder
 
   -- other-extensions:
 
