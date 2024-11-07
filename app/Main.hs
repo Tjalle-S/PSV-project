@@ -19,23 +19,20 @@ import GHC.IsList (IsList(toList))
 
 main :: IO ()
 main = do
-  command <- getOptions
-  case command of
-    Version -> putStrLn "The (Glorious) GCL Logical Execution Engine, version 1.0.0"
-    Args args@ArgData{..} -> do
-      ast <- parseGCLfile fileName
-      (st, timeUsed) <- withTimer $ do
-        (res, st, logs) <- case ast of
-                  Left  _err -> error "Parse error"
-                  Right prog -> run args prog
-        when res (liftIO $ putStrLn "Accept")
-        putStr $ unlines $ toList logs
+  args@ArgData{..} <- getOptions
+  ast <- parseGCLfile fileName
+  (st, timeUsed) <- withTimer $ do
+    (res, st, logs) <- case ast of
+              Left  _err -> error "Parse error"
+              Right prog -> run args prog
+    when res (liftIO $ putStrLn "Accept")
+    putStr $ unlines $ toList logs
 
-        return st
+    return st
 
-      when showStats $ do
-        pPrint (stats st)
-        putStrLn $ "Total time used: " ++ show timeUsed
+  when showStats $ do
+    pPrint (stats st)
+    putStrLn $ "Total time used: " ++ show timeUsed
 
 printOptions :: OutputOptions
 printOptions = OutputOptions 2 120 True True 0 Nothing EscapeNonPrintable

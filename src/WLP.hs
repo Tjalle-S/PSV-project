@@ -53,6 +53,7 @@ prunedCalcWLP prune tree = cata f tree [] id 0
             ex <- showModel m
             tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
             return False
+    f (LoopInvF {}) _ _ _ = error "Unreachable: loop invariants removed after cut."
 
 testChildren :: Monad m => [m Bool] -> m Bool
 testChildren []         = return True

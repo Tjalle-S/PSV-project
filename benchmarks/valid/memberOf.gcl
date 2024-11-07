@@ -9,7 +9,7 @@ memberOf(x:int, a:[]int | found:bool) {
    var k:int {
      k := 0 ;
      found := false ;
-     assert k<=#a && found = (exists l:: 0<=l && l<k && a[l]=x) ;
+     assert 0<=k && k<=#a && found = (exists l:: 0<=l && l<k && a[l]=x) ;
      while k<#a do { // deliberately iterating till the end of array
        if a[k]=x
           then { found := true }

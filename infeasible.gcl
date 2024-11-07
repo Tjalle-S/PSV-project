@@ -1,6 +1,0 @@
-E ( x : int | y : int ){
-  assume 1 < x ;
-  assume 3 > x ;
-  y := x ;
-  assert y =2
-}

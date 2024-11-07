@@ -2,7 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveTraversable #-}
 
+
 module Statement (ExecStmt(..), ExecTree(..), ExecTreeF(..)) where 
+
+import GCLParser.GCLDatatype (Type(..))
 
 import Expr (Expr)
 
@@ -17,8 +20,11 @@ data ExecStmt = ESkip
               -- | EBlock
               deriving (Show)
 
+type Decl  = (String, Type)
+type Decls = [Decl]
 data ExecTree = Node ExecStmt [ExecTree]
               | Termination ExecStmt
+  	      | LoopInv ExecTree ExecTree Decls Decls 
               deriving (Show)
 
 makeBaseFunctor ''ExecTree
