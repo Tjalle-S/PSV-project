@@ -32,7 +32,8 @@ library libglee
   default-language: Haskell2010
 
 
-executable glee-test
+test-suite glee-test
+  type:             exitcode-stdio-1.0
   ghc-options:      -Wall -O2 -fproc-alignment=64
 
   main-is:          Main.hs

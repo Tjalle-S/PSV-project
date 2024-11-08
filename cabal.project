@@ -3,3 +3,6 @@ packages: .
 source-repository-package
   type:     git
   location: https://github.com/wooshrow/gclparser.git
+
+test-show-details: streaming
+test-options:      --color=always
