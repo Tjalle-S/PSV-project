@@ -74,6 +74,8 @@ simplifyExpr :: Expr -> Expr
 simplifyExpr = cata f 
   where
     f (OpNegF (OpNeg e)) = e
+    f (OpNegF (LitB True)) = LitB False
+    f (OpNegF (LitB False)) = LitB True
 
     f (BinopExprF And (LitB True) (LitB True)) = LitB True
     f (BinopExprF And (LitB True) r) = r 
@@ -119,31 +121,38 @@ simplifyExpr = cata f
                                             | otherwise = BinopExpr Equal l r
 
     f (BinopExprF Plus (LitI l) (LitI r)) = LitI (l+r)
-    -- Cases without parentheses
-    f (BinopExprF Plus (LitI b) (BinopExpr Plus (LitI l) r)) = BinopExpr Plus (LitI (l+b)) r
-    f (BinopExprF Plus (LitI b) (BinopExpr Plus l (LitI r))) = BinopExpr Plus (LitI (r+b)) l
-    f (BinopExprF Plus (BinopExpr Plus (LitI l) r) (LitI b)) = BinopExpr Plus (LitI (l+b)) r
-    f (BinopExprF Plus (BinopExpr Plus l (LitI r)) (LitI b)) = BinopExpr Plus (LitI (r+b)) l
+    f (BinopExprF Plus l (LitI 0)) = l
+    f (BinopExprF Plus (LitI 0) r) = r
+    -- Cases with parentheses
+    f (BinopExprF Plus (LitI b) (BinopExpr Plus (LitI l) r)) = simplifyExpr $ BinopExpr Plus (LitI (l+b)) r
+    f (BinopExprF Plus (LitI b) (BinopExpr Plus l (LitI r))) = simplifyExpr $ BinopExpr Plus (LitI (r+b)) l
+    f (BinopExprF Plus (BinopExpr Plus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Plus (LitI (l+b)) r
+    f (BinopExprF Plus (BinopExpr Plus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Plus (LitI (r+b)) l
 
-    f (BinopExprF Plus (LitI b) (BinopExpr Minus (LitI l) r)) = BinopExpr Minus (LitI (l+b)) r
-    f (BinopExprF Plus (LitI b) (BinopExpr Minus l (LitI r))) = BinopExpr Plus (LitI (b-r)) l
-    f (BinopExprF Plus (BinopExpr Minus (LitI l) r) (LitI b)) = BinopExpr Minus (LitI (l+b)) r
-    f (BinopExprF Plus (BinopExpr Minus l (LitI r)) (LitI b)) = BinopExpr Plus (LitI (b-r)) l
+    f (BinopExprF Plus (LitI b) (BinopExpr Minus (LitI l) r)) = simplifyExpr $ BinopExpr Minus (LitI (b+l)) r
+    f (BinopExprF Plus (LitI b) (BinopExpr Minus l (LitI r))) = simplifyExpr $ BinopExpr Plus (LitI (b-r)) l
+    f (BinopExprF Plus (BinopExpr Minus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Minus (LitI (l+b)) r
+    f (BinopExprF Plus (BinopExpr Minus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Plus (LitI (b-r)) l
 
     f (BinopExprF Minus (LitI l) (LitI r)) = LitI (l-r)
-    -- Cases without parentheses
-    f (BinopExprF Minus (LitI b) (BinopExpr Minus (LitI l) r)) = BinopExpr Minus (LitI (b-l)) r
-    f (BinopExprF Minus (LitI b) (BinopExpr Minus l (LitI r))) = BinopExpr Minus (LitI (b-r)) l
-    f (BinopExprF Minus (BinopExpr Minus (LitI l) r) (LitI b)) = BinopExpr Minus (LitI (l-b)) r
-    f (BinopExprF Minus (BinopExpr Minus l (LitI r)) (LitI b)) = BinopExpr Minus l (LitI (b+r)) 
+    f (BinopExprF Minus l (LitI 0)) = l
+    -- Cases with parentheses
+    f (BinopExprF Minus (LitI b) (BinopExpr Minus (LitI l) r)) = simplifyExpr $ BinopExpr Plus (LitI (b-l)) r
+    f (BinopExprF Minus (LitI b) (BinopExpr Minus l (LitI r))) = simplifyExpr $ BinopExpr Minus (LitI (b+r)) l
+    f (BinopExprF Minus (BinopExpr Minus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Minus (LitI (l-b)) r
+    f (BinopExprF Minus (BinopExpr Minus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Minus l (LitI (b+r)) 
 
-    f (BinopExprF Minus (LitI b) (BinopExpr Plus (LitI l) r)) = BinopExpr Plus (LitI (b-l)) r
-    f (BinopExprF Minus (LitI b) (BinopExpr Plus l (LitI r))) = BinopExpr Minus (LitI (b+r)) l
-    f (BinopExprF Minus (BinopExpr Plus (LitI l) r) (LitI b)) = BinopExpr Plus r (LitI (l-b))
-    f (BinopExprF Minus (BinopExpr Plus l (LitI r)) (LitI b)) = BinopExpr Plus l (LitI (r-b))
+    f (BinopExprF Minus (LitI b) (BinopExpr Plus (LitI l) r)) = simplifyExpr $ BinopExpr Minus (LitI (b-l)) r
+    f (BinopExprF Minus (LitI b) (BinopExpr Plus l (LitI r))) = simplifyExpr $ BinopExpr Minus (LitI (b-r)) l
+    f (BinopExprF Minus (BinopExpr Plus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Plus r (LitI (l-b))
+    f (BinopExprF Minus (BinopExpr Plus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Plus l (LitI (r-b))
 
 
     f (BinopExprF Multiply (LitI l) (LitI r)) = LitI (l*r)
+    f (BinopExprF Multiply l (LitI 1)) = l
+    f (BinopExprF Multiply (LitI 1) r) = r
+    f (BinopExprF Multiply _ (LitI 0)) = LitI 0
+    f (BinopExprF Multiply (LitI 0) _) = LitI 0
 
     f (BinopExprF Divide (LitI l) (LitI r)) | r == 1    = LitI l
                                             | l == 0    = LitI l
@@ -154,6 +163,7 @@ simplifyExpr = cata f
 simplifyTree :: ExecTree -> ExecTree
 simplifyTree (Node e t) = Node (simplifyStmt e) (map simplifyTree t)
 simplifyTree (Termination e) = Termination (simplifyStmt e)
+simplifyTree (LoopInv t1 t2 d1 d2) = LoopInv (simplifyTree t1) (simplifyTree t2) d1 d2
 
 simplifyStmt :: ExecStmt -> ExecStmt
 simplifyStmt (EAssert e) = EAssert (simplifyExpr e)

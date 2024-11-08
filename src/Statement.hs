@@ -24,7 +24,7 @@ type Decl  = (String, Type)
 type Decls = [Decl]
 data ExecTree = Node ExecStmt [ExecTree]
               | Termination ExecStmt
-  	      | LoopInv ExecTree ExecTree Decls Decls 
+  	          | LoopInv ExecTree ExecTree Decls Decls 
               deriving (Show)
 
 makeBaseFunctor ''ExecTree

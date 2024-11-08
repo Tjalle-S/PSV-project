@@ -49,7 +49,7 @@ defaultArgs = ArgData {
 , enableAllHeuristics = False
 , enabledHeuristics   = HeuristicOptions {
     pruneInfeasible = 50
-  , simplifyExpressions = True
+  , simplifyExpressions = False
   , checkInvariant  = False
 }
 }
