@@ -72,7 +72,7 @@ wlpStmt (EAAssign s i e)  = cata f
 wlpStmt (EDrefAssign _ _) = optionalError -- Reference types.
 -- wlpStmt EBlock = error "TODO"
 
-replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
+replaceVar :: [Char] -> Expr -> [Char] -> (Type,Maybe Int) -> Expr
 replaceVar s1 e s2 t| s1==s2 = e
                     | otherwise = Var s1 t
 

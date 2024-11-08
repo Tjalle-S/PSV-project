@@ -19,8 +19,9 @@ import Statement (ExecTree(..), ExecStmt(..), ExecTree(..))
 both :: (a->b) -> (a,a) -> (b,b)
 both f (x,y) = (f x,f y)
 
-type Decl  = (String, Type)
-type Decls = [Decl]
+type VarInfo= (Type,Maybe Int)
+type Decl   = (String, VarInfo)
+type Decls  = [Decl]
 
 makeUnique :: String -> State Decls String
 makeUnique s= do
@@ -31,8 +32,8 @@ makeUnique s= do
                       else
                         return s
 
-findType :: String -> State Decls Type
-findType s = do
+findVarInfo :: String -> State Decls VarInfo
+findVarInfo s = do
                 vars <- get
                 case lookup s vars of
                   Just t -> return t
@@ -49,25 +50,27 @@ getVarStr (P.Var s) = s
 getVarStr (P.RepBy e _ _) = getVarStr e
 getVarStr e = error $ show e ++ " is not an array"
 
-makeQuantifier :: (String -> Expr -> Expr) -> String -> String -> Expr -> Expr
-makeQuantifier q s s' e' = q s' (replace s (Var s' $ PType PTInt) e')
+makeQuantifier :: Int -> (String -> Expr -> Expr) -> String -> String -> Expr -> Expr
+makeQuantifier d q s s' e' = q s' (replace s (Var s' (PType PTInt, Just d)) e')
 
-badExpr2goodExpr :: P.Expr -> State Decls Expr
-badExpr2goodExpr (P.Var s)            = Var s <$> findType s
-badExpr2goodExpr (P.LitI i)           = return (LitI i)
-badExpr2goodExpr (P.LitB b)           = return (LitB b)
-badExpr2goodExpr (P.ArrayElem e1 e2)  = ArrayElem <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2
-badExpr2goodExpr (P.OpNeg e)          = OpNeg <$> badExpr2goodExpr e
-badExpr2goodExpr (P.BinopExpr op l r) = BinopExpr op <$> badExpr2goodExpr l <*> badExpr2goodExpr r
-badExpr2goodExpr (P.Forall s e)       = makeQuantifier Forall s <$> (fst <$> addVar (s, PType PTInt)) <*> badExpr2goodExpr e
-badExpr2goodExpr (P.Exists s e)       = makeQuantifier Exists s <$> (fst <$> addVar (s, PType PTInt)) <*> badExpr2goodExpr e
-badExpr2goodExpr (P.SizeOf e)         = return (SizeOf $ getVarStr e)
-badExpr2goodExpr (P.RepBy e1 e2 e3)   = RepBy <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2 <*> badExpr2goodExpr e3
-badExpr2goodExpr (P.Parens e)         = badExpr2goodExpr e
-badExpr2goodExpr (P.Cond e1 e2 e3)    = Cond <$> badExpr2goodExpr e1 <*> badExpr2goodExpr e2 <*> badExpr2goodExpr e3
-badExpr2goodExpr (P.NewStore _)       = optionalError -- Pointer types.
-badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
-badExpr2goodExpr P.LitNull            = optionalError -- Pointer types.
+badExpr2goodExpr  :: P.Expr -> State Decls Expr
+badExpr2goodExpr = badExpr2goodExpr' 0
+badExpr2goodExpr' :: Int {-Quantifier Depth-} -> P.Expr -> State Decls Expr
+badExpr2goodExpr' _ (P.Var s)            = Var s <$> findVarInfo s
+badExpr2goodExpr' _ (P.LitI i)           = return (LitI i)
+badExpr2goodExpr' _ (P.LitB b)           = return (LitB b)
+badExpr2goodExpr' d (P.ArrayElem e1 e2)  = ArrayElem <$> badExpr2goodExpr' d e1 <*> badExpr2goodExpr' d e2
+badExpr2goodExpr' d (P.OpNeg e)          = OpNeg <$> badExpr2goodExpr' d e
+badExpr2goodExpr' d (P.BinopExpr op l r) = BinopExpr op <$> badExpr2goodExpr' d l <*> badExpr2goodExpr' d r
+badExpr2goodExpr' d (P.Forall s e)       = makeQuantifier d Forall s <$> (fst <$> addVar (s, (PType PTInt,Just d))) <*> badExpr2goodExpr' (d+1) e
+badExpr2goodExpr' d (P.Exists s e)       = makeQuantifier d Exists s <$> (fst <$> addVar (s, (PType PTInt,Just d))) <*> badExpr2goodExpr' (d+1) e
+badExpr2goodExpr' _ (P.SizeOf e)         = return (SizeOf $ getVarStr e)
+badExpr2goodExpr' d (P.RepBy e1 e2 e3)   = RepBy <$> badExpr2goodExpr' d e1 <*> badExpr2goodExpr' d e2 <*> badExpr2goodExpr' d e3
+badExpr2goodExpr' d (P.Parens e)         = badExpr2goodExpr' d e
+badExpr2goodExpr' d (P.Cond e1 e2 e3)    = Cond <$> badExpr2goodExpr' d e1 <*> badExpr2goodExpr' d e2 <*> badExpr2goodExpr' d e3
+badExpr2goodExpr' _ (P.NewStore _)       = optionalError -- Pointer types.
+badExpr2goodExpr' _ (P.Dereference _)    = optionalError -- Pointer types.
+badExpr2goodExpr' _ P.LitNull            = optionalError -- Pointer types.
 
 progToExecMaxDepth :: Bool -> Int -> Program -> ExecTree
 progToExecMaxDepth checkInv d  = cut d . progToExec checkInv
@@ -92,7 +95,7 @@ cut' d (LoopInv t1 t2 from to) = do
 --TODO: Make it look better 
 
 varDeclsToTuples :: [VarDeclaration]-> Decls
-varDeclsToTuples = map (\(VarDeclaration s t)->(s,t))
+varDeclsToTuples = map (\(VarDeclaration s t)->(s,(t,Nothing)))
 
 progToExec :: Bool -> Program -> ExecTree
 progToExec checkInv Program {stmt = s, input = i, output = o} = evalState (stmtToExec checkInv s) (varDeclsToTuples $ i ++ o)

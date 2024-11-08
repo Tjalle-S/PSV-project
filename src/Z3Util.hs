@@ -47,7 +47,7 @@ getValidityCounterExample as ast = do
 -- ============================================================
 
 expr2astF :: (MonadZ3 m, MonadState VState m) => ExprF (m AST) -> m AST
-expr2astF (VarF name typ)       = incrFormulaSize >> makeVar name typ
+expr2astF (VarF name (typ,_))   = incrFormulaSize >> makeVar name typ
 
 expr2astF (LitIF i)             = incrFormulaSize >> mkIntNum i
 expr2astF (LitBF b)             = incrFormulaSize >> mkBool b

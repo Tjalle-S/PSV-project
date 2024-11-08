@@ -20,11 +20,11 @@ data ExecStmt = ESkip
               -- | EBlock
               deriving (Show)
 
-type Decl  = (String, Type)
+type Decl  = (String, (Type,Maybe Int))
 type Decls = [Decl]
 data ExecTree = Node ExecStmt [ExecTree]
               | Termination ExecStmt
-  	      | LoopInv ExecTree ExecTree Decls Decls 
+              | LoopInv ExecTree ExecTree Decls Decls 
               deriving (Show)
 
 makeBaseFunctor ''ExecTree

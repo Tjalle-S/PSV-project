@@ -18,7 +18,8 @@ import Data.Functor.Foldable (Recursive(cata))
 import Data.Functor.Foldable.TH (MakeBaseFunctor(makeBaseFunctor))
 
 data Expr
-    = Var       String Type
+    --If it is a quantifier, the Int gives it's depth
+    = Var       String (Type,Maybe Int)
     | LitI      Int     
     | LitB      Bool    
     -- LitNull
