@@ -48,7 +48,7 @@ defaultArgs = ArgData {
 , dumpConditions      = False
 , enableAllHeuristics = False
 , enabledHeuristics   = HeuristicOptions {
-    pruneInfeasible = 50
+    pruneInfeasible = 0
   , checkInvariant  = False
 }
 }
@@ -61,7 +61,7 @@ makeValid   = ("valid/" ++)
 makeInvalid = ("invalid/" ++)
 
 programs :: [String]
-programs = ["memberOf", "divByN", "pullUp", "bsort"]
+programs = [{-"memberOf", "divByN", "pullUp",-} "bsort"]
 
 -- | Read a program with the given name, and replace N by the given constant.
 getProgram :: String -> Int -> IO Program

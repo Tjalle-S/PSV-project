@@ -13,6 +13,7 @@ import Control.Monad.State ( MonadState )
 import Data.Functor.Foldable ( Recursive(cata) )
 
 import Util ( VState(..), optionalError, incrFormulaSize )
+import Debug.Trace
 
 
 -- | Transforms an expression into a Z3 AST.
@@ -47,7 +48,7 @@ getValidityCounterExample as ast = do
 -- ============================================================
 
 expr2astF :: (MonadZ3 m, MonadState VState m) => ExprF (m AST) -> m AST
-expr2astF (VarF name (typ,_))   = incrFormulaSize >> makeVar name typ
+expr2astF (VarF name (typ,md))   = incrFormulaSize >> makeVar name typ md
 
 expr2astF (LitIF i)             = incrFormulaSize >> mkIntNum i
 expr2astF (LitBF b)             = incrFormulaSize >> mkBool b
@@ -65,8 +66,9 @@ expr2astF (SizeOfF    a    )    = incrFormulaSize >> (mkIntVar =<< mkStringSymbo
 expr2astF (ForallF name e)      = mkQuantifier mkForall name e
 expr2astF (ExistsF name e)      = mkQuantifier mkExists name e
 
-makeVar :: MonadZ3 m => String -> Type -> m AST
-makeVar name typ = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
+makeVar :: MonadZ3 m => String -> Type -> Maybe Int -> m AST
+makeVar name typ Nothing = join (mkVar <$> mkStringSymbol name <*> makeSort typ)
+makeVar _    typ (Just d)= join (mkBound d <$> makeSort typ)
 
 makeSort :: MonadZ3 m => Type -> m Sort
 makeSort (PType t) = makePrimSort t
