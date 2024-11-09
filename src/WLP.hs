@@ -7,7 +7,7 @@ import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
-import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs, ReaderData (options))
+import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs)
 import TreeBuilder (replace)
 import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, Result (..), local)
 import Z3Util (expr2ast)
@@ -23,7 +23,7 @@ prunedCalcWLP prune tree = cata f tree [] id 0
       let e' = em e
       ast <- expr2ast e'
       let next = map (\g -> g (ast : as) em (d + 1)) r
-      whenRs (dumpConditions . options) $ do
+      whenRs dumpConditions $ do
         tell (singleton $ show e')
       if prune <= d then do testChildren next else do
         _res <- checkAssumptions (ast : as)
@@ -41,7 +41,7 @@ prunedCalcWLP prune tree = cata f tree [] id 0
       local $ do
         let e' = em (wlpStmt s $ LitB True)                                                                                      
         ast <- mkNot =<< expr2ast e'
-        whenRs (dumpConditions . options) $ do
+        whenRs dumpConditions $ do
           tell (singleton $ show e')
         assert =<< mkAnd (ast : as)
         (_res, model) <- getModel

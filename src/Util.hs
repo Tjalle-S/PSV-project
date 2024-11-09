@@ -3,30 +3,30 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Util (
-  VState(..), Stats(..), ReaderData(..), Log
+  VState, Stats(..), ReaderData, Log
 
 , V, runV
 , GT, MonadG
 
 , incrNumPaths, incrFormulaSize, incrNumPruned
 
-, isEnabled, whenRs, optionalError) where
+, whenRs, optionalError) where
 
-import Cli (ArgData (enableAllHeuristics, enabledHeuristics), HeuristicOptions)
 import Z3.Monad (Z3, evalZ3)
 import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, MonadReader, asks, modify)
 import Data.DList (DList)
 import Control.Monad (when)
+import Cli (ArgData)
 
 -- TODO: find better names.
 
-data ReaderData = ReaderData {
-  options :: ArgData
-}
+type ReaderData = ArgData
 
-data VState = VState {
-  stats :: Stats
-} deriving Show
+-- data ReaderData = ReaderData {
+--   options :: ArgData
+-- }
+
+type VState = Stats
 
 -- | Stats that need to kept track of during the process.
 data Stats = Stats {
@@ -53,12 +53,10 @@ runV :: ReaderData -> V a -> IO (a, VState, Log)
 runV args mx = evalZ3 $ runRWST mx args emptyState
 
 emptyState :: VState
-emptyState = VState {
-  stats = Stats {
-    inspectedPaths  = 0
-  , prunedBranches = 0
-  , formulaSize     = 0
-  }
+emptyState = Stats {
+  inspectedPaths  = 0
+, prunedBranches = 0
+, formulaSize     = 0
 }
 
 -- | An error message to show that a bonus feature is not yet implemented.
@@ -66,15 +64,12 @@ optionalError :: a
 optionalError = error "Not implemented: optional assignment"
 
 incrNumPaths, incrFormulaSize, incrNumPruned :: MonadState VState m => m ()
-incrNumPaths    = modify $ \v@VState { stats = s@Stats { inspectedPaths } }  ->
-  v { stats = s { inspectedPaths  = inspectedPaths  + 1 } }
-incrFormulaSize = modify $ \v@VState { stats = s@Stats { formulaSize } }     ->
-  v { stats = s { formulaSize     = formulaSize     + 1 } }
-incrNumPruned   = modify $ \v@VState { stats = s@Stats { prunedBranches } } ->
-  v { stats = s { prunedBranches = prunedBranches + 1 } }
-
-isEnabled :: (HeuristicOptions -> Bool) -> ReaderData -> Bool
-isEnabled f = (||) <$> enableAllHeuristics <*> f . enabledHeuristics <$> options
+incrNumPaths    = modify $ \s@Stats { inspectedPaths }  ->
+  s { inspectedPaths  = inspectedPaths + 1 }
+incrFormulaSize = modify $ \s@Stats { formulaSize }     ->
+  s { formulaSize     = formulaSize    + 1 }
+incrNumPruned   = modify $ \s@Stats { prunedBranches }  ->
+  s { prunedBranches = prunedBranches  + 1 }
 
 -- | A variant of 'Control.Monad.when' where the condition is read from an environment.
 whenRs :: (MonadReader env m) => (env -> Bool) -> m () -> m ()

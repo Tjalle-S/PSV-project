@@ -13,8 +13,6 @@ data ArgData = ArgData {
   -- | Whether or not all calculated preconditions should be dumped to stdout.
 , dumpConditions      :: Bool
 
-  -- | Whether or not heuristics should be enabled.
-, enableAllHeuristics :: Bool
   -- | Which heuristics are explicitly enabled.
 , enabledHeuristics   :: HeuristicOptions
 }
@@ -44,10 +42,6 @@ parseOptions =  ArgData
        long "dump-wlp"
     <> short 'd'
     <> help "Dump all calculated preconditions (even if not evaluated)")
-  <*> switch (
-       long "optimize"
-    <> short 'O'
-    <> help "Enable all heuristics")
   <*> parseHeuristics
   
 parseHeuristics :: Parser HeuristicOptions

@@ -9,9 +9,8 @@ import Text.Pretty.Simple
     ( CheckColorTty(NoCheckColorTty),
       OutputOptions(OutputOptions),
       pPrintOpt,
-      StringOutputStyle(EscapeNonPrintable), {-pPrintStringOpt-} )
+      StringOutputStyle(EscapeNonPrintable) )
 import Control.Monad.IO.Class (MonadIO (..))
-import Util
 import Control.Monad (when)
 import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
 import Runner (run)
@@ -31,7 +30,7 @@ main = do
     return st
 
   when showStats $ do
-    pPrint (stats st)
+    pPrint st
     putStrLn $ "Total time used: " ++ show timeUsed
 
 printOptions :: OutputOptions
@@ -39,9 +38,6 @@ printOptions = OutputOptions 2 120 True True 0 Nothing EscapeNonPrintable
 
 pPrint :: (MonadIO m, Show a) => a -> m ()
 pPrint = pPrintOpt NoCheckColorTty printOptions
-
--- pPutStrLn :: MonadIO m => String -> m ()
--- pPutStrLn = pPrintStringOpt NoCheckColorTty printOptions
 
 withTimer :: MonadIO m => m a -> m (a, NominalDiffTime)
 withTimer ma = do

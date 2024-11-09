@@ -100,7 +100,6 @@ defaultArgs = ArgData {
 , maxLength           = 50
 , showStats           = False
 , dumpConditions      = False
-, enableAllHeuristics = False
 , enabledHeuristics   = HeuristicOptions {
     pruneInfeasible = 50
   , checkInvariant  = False
