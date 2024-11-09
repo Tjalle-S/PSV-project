@@ -19,6 +19,25 @@ import Cli (ArgData(dumpConditions))
 prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
 prunedCalcWLP prune tree = cata f tree [] id 0
   where
+    f (NodeF (EAssert e) r) as em d = do
+      (_res, model) <- local $ do
+        let e' = em e
+        ast <- mkNot =<< expr2ast e'
+        whenRs dumpConditions $ do
+          tell (singleton $ "assert" ++ show e')
+        assert =<< mkAnd (ast : as)
+        getModel
+      case model of
+          -- No counterexample found, continue along this execution path.
+          Nothing -> let next = map (\g -> g as em (d + 1)) r
+                     in testChildren next
+          -- Counterexample found, stop here.
+          Just m -> do
+            ex <- showModel m
+            tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
+            return False
+
+
     f (NodeF (EAssume e) r) as em d = do
       let e' = em e
       ast <- expr2ast e'
