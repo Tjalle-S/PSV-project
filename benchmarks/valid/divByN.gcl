@@ -10,9 +10,7 @@ divByN(x:int | divisible:bool) {
     k := 1 ;
     divisible := false ;
     while k<=x && ~divisible do {
-      //assert divisible
-      //       =
-      //       (exists m:: 0<m && m<k && m*N = x)  ;
+      assert divisible = (exists m:: 0<m && m<k && m*N = x);
       var i:int {
          i := 0 ;
          while i<N do { // deliberate bug ... should i<N. Change: removing the bug.
