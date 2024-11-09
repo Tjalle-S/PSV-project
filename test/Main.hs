@@ -17,6 +17,7 @@ import System.Exit (exitFailure, exitSuccess)
 newtype Depth     = Depth Int
 newtype Prune     = Prune Int
 newtype Invariant = Invariant Bool
+newtype Simplify  = Simplify Bool
 
 instance IsOption Depth where
   defaultValue = Depth (-1)
@@ -37,9 +38,16 @@ instance IsOption Invariant where
   optionHelp   = pure "Detect annotated loop invariants"
   optionCLParser = mkFlagCLParser mempty (Invariant True)
 
+instance IsOption Simplify where
+  defaultValue = Simplify False
+  parseValue   = fmap Simplify . safeReadBool
+  optionName   = pure "simplify"
+  optionHelp   = pure "Perform front-end expression simplification"
+  optionCLParser = mkFlagCLParser mempty (Simplify True)
+
 main :: IO ()
 main = do
-  let customOpts  = [Option (Proxy :: Proxy Depth), Option (Proxy :: Proxy Prune), Option (Proxy :: Proxy Invariant)]
+  let customOpts  = [Option (Proxy :: Proxy Depth), Option (Proxy :: Proxy Prune), Option (Proxy :: Proxy Invariant), Option (Proxy :: Proxy Simplify)]
   let ingredients = includingOptions customOpts : benchIngredients
   opts <- parseOptions ingredients tests
   let opts' = setOption (MinDurationToReport 9999999999999999) $ setOption (NumThreads 1) opts
@@ -52,11 +60,15 @@ tests = AskOptions $ \opts ->
   let d           = let Depth d' = lookupOption opts in if d' == -1 then maxLength defaultArgs else d'
       Prune     p = lookupOption opts
       Invariant i = lookupOption opts
+      Simplify  s = lookupOption opts
       args = defaultArgs {
-          maxLength = d
+          maxLength         = d
         , enabledHeuristics = HeuristicOptions {
-            pruneInfeasible = if p == -1 then d else p
-            , checkInvariant = i } }
+            pruneInfeasible     = if p == -1 then d else p
+          , simplifyExpressions = s
+          , checkInvariant      = i
+          }
+        }
   in  bgroup "All" [ bgroup "Benchmarks" (makeGroups makeValid $ \n -> bench n . nfIO . getResultOf args)
       , bgroup "Test Valid Programs"   (makeGroups makeValid   $ \n -> testCase n . makeAssertion True  args)
       , bgroup "Test Invalid Programs" (makeGroups makeInvalid $ \n -> testCase n . makeAssertion False args)
@@ -94,6 +106,7 @@ defaultArgs = ArgData {
 , dumpConditions      = False
 , enabledHeuristics   = HeuristicOptions {
     pruneInfeasible = 50
+  , simplifyExpressions = True
   , checkInvariant  = False
 }
 }

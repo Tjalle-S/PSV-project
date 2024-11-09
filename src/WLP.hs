@@ -7,8 +7,8 @@ import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
-import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs)
-import TreeBuilder (replace)
+import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs, applyWhen)
+import TreeBuilder (replace, simplifyExpr)
 import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, Result (..), local, AST, Model)
 import Z3Util (expr2ast)
 import Control.Monad.RWS (tell)
@@ -16,19 +16,19 @@ import Data.DList (singleton)
 import Data.Bool (bool)
 import Cli (ArgData(dumpConditions))
 
-prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
-prunedCalcWLP prune tree = cata f tree [] id 0
+prunedCalcWLP :: (MonadZ3 m, MonadG m) => Bool -> Int -> ExecTree -> m Bool
+prunedCalcWLP simp prune tree = cata f tree [] id 0
   where
     f (NodeF (EAssert e) r) as em d = do
       -- Check assertion, then ignore it afterwards.
       (_res, model) <- local $ do
-        e' <- getTransformed em "assert: " e
+        e' <- getTransformed em "assert: " (applyWhen simp simplifyExpr e)
         ast <- mkNot =<< expr2ast e'
         assert =<< mkAnd (ast : as)
         getModel
       checkAssertions model (continue as em d r)
     f (NodeF (EAssume e) r) as em d = do
-      e' <- getTransformed em "assume: " e
+      e' <- getTransformed em "assume: " (applyWhen simp simplifyExpr e)
       ast <- expr2ast e'
       -- Add the assumption to the list.
       let continuation = continue (ast : as) em d r
@@ -41,7 +41,7 @@ prunedCalcWLP prune tree = cata f tree [] id 0
           Unsat -> incrNumPruned >> return True
           _     -> error "Got undefined result from Z3"
     -- Add transformer to the composition.
-    f (NodeF s r) as em d = continue as (em . wlpStmt s) d r
+    f (NodeF s r) as em d = continue as (em . applyWhen simp simplifyExpr . wlpStmt s) d r
     -- End of path. Perform last transformation, then check assertions.
     f (TerminationF s) as em _ = do
       incrNumPaths

@@ -19,6 +19,7 @@ data ArgData = ArgData {
 
 data HeuristicOptions = HeuristicOptions {
   pruneInfeasible :: Int
+, simplifyExpressions :: Bool
 , checkInvariant  :: Bool
 }
 
@@ -52,7 +53,11 @@ parseHeuristics = HeuristicOptions
     <> value 0
     <> metavar "int"
     <> help "Attempt to prune infeasible paths")
-    <*> switch (
+  <*> switch (
+       long "simplify-expressions"
+    <> short 'e'
+    <> help "Simplify expressions once the tree is built")
+  <*> switch (
        long "check-invariant"
     <> short 'i'
     <> help "Check annotated loop invariants"

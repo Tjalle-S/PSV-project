@@ -10,7 +10,7 @@ module Util (
 
 , incrNumPaths, incrFormulaSize, incrNumPruned
 
-, whenRs, optionalError) where
+, whenRs, optionalError, applyWhen) where
 
 import Z3.Monad (Z3, evalZ3)
 import Control.Monad.RWS (RWST (runRWST), MonadRWS, MonadState, MonadReader, asks, modify)
@@ -76,3 +76,7 @@ whenRs :: (MonadReader env m) => (env -> Bool) -> m () -> m ()
 whenRs getC a = do
   c <- asks getC
   when c a
+
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True f a = f a
+applyWhen _    _ a = a

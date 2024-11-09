@@ -3,6 +3,8 @@ module TreeBuilder (
 , badExpr2goodExpr
 , progToExec
 , progToExecMaxDepth
+, simplifyExpr
+, simplifyTree
 , stmtToExec) where --The last one should be temporarily
 
 import GCLParser.GCLDatatype hiding (Expr(..))
@@ -68,6 +70,110 @@ badExpr2goodExpr (P.Cond e1 e2 e3)    = Cond <$> badExpr2goodExpr e1 <*> badExpr
 badExpr2goodExpr (P.NewStore _)       = optionalError -- Pointer types.
 badExpr2goodExpr (P.Dereference _)    = optionalError -- Pointer types.
 badExpr2goodExpr P.LitNull            = optionalError -- Pointer types.
+
+simplifyExpr :: Expr -> Expr
+simplifyExpr = cata f 
+  where
+    f (OpNegF (OpNeg e)) = e
+    f (OpNegF (LitB True)) = LitB False
+    f (OpNegF (LitB False)) = LitB True
+
+    f (BinopExprF And (LitB True) (LitB True)) = LitB True
+    f (BinopExprF And (LitB True) r) = r 
+    f (BinopExprF And l (LitB True)) = l 
+    f (BinopExprF And (LitB False) _) = LitB False
+    f (BinopExprF And _ (LitB False)) = LitB False
+    f (BinopExprF And l r)  | l == r = l
+                            | otherwise = BinopExpr And l r
+    
+    f (BinopExprF Or (LitB True) _) = LitB True
+    f (BinopExprF Or _ (LitB True)) = LitB True
+    f (BinopExprF Or (LitB False) r) = r 
+    f (BinopExprF Or l (LitB False)) = l
+    f (BinopExprF Or l r) | l == r = l
+                          | otherwise = BinopExpr Or l r
+
+    -- implications to disjunctive normal form (DNF)
+    f (BinopExprF Implication l r) = simplifyExpr $ BinopExpr Or (OpNeg  l) r  
+
+    f (BinopExprF LessThan (LitI l) (LitI r)) | l < r     = LitB True
+                                              | otherwise = LitB False 
+    f (BinopExprF LessThan l r)               | l == r    = LitB False
+                                              | otherwise = BinopExpr LessThan l r       
+
+    f (BinopExprF LessThanEqual (LitI l) (LitI r))  | l <= r    = LitB True
+                                                    | otherwise = LitB False
+    f (BinopExprF LessThanEqual l r)                | l == r    = LitB True
+                                                    | otherwise = BinopExpr LessThanEqual l r
+                                                      
+    f (BinopExprF GreaterThan (LitI l) (LitI r))  | l > r     = LitB True
+                                                  | otherwise = LitB False   
+    f (BinopExprF GreaterThan l r)                | l == r    = LitB False
+                                                  | otherwise = BinopExpr GreaterThan l r     
+
+    f (BinopExprF GreaterThanEqual (LitI l) (LitI r)) | l >= r    = LitB True
+                                                      | otherwise = LitB False
+    f (BinopExprF GreaterThanEqual l r)               | l == r    = LitB True
+                                                      | otherwise = BinopExpr GreaterThanEqual l r
+
+    f (BinopExprF Equal (LitI l) (LitI r))  | l == r    = LitB True
+                                            | otherwise = LitB False
+    f (BinopExprF Equal l r)                | l == r    = LitB True
+                                            | otherwise = BinopExpr Equal l r
+
+    f (BinopExprF Plus (LitI l) (LitI r)) = LitI (l+r)
+    f (BinopExprF Plus l (LitI 0)) = l
+    f (BinopExprF Plus (LitI 0) r) = r
+    -- Cases with parentheses
+    f (BinopExprF Plus (LitI b) (BinopExpr Plus (LitI l) r)) = simplifyExpr $ BinopExpr Plus (LitI (l+b)) r
+    f (BinopExprF Plus (LitI b) (BinopExpr Plus l (LitI r))) = simplifyExpr $ BinopExpr Plus (LitI (r+b)) l
+    f (BinopExprF Plus (BinopExpr Plus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Plus (LitI (l+b)) r
+    f (BinopExprF Plus (BinopExpr Plus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Plus (LitI (r+b)) l
+
+    f (BinopExprF Plus (LitI b) (BinopExpr Minus (LitI l) r)) = simplifyExpr $ BinopExpr Minus (LitI (b+l)) r
+    f (BinopExprF Plus (LitI b) (BinopExpr Minus l (LitI r))) = simplifyExpr $ BinopExpr Plus (LitI (b-r)) l
+    f (BinopExprF Plus (BinopExpr Minus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Minus (LitI (l+b)) r
+    f (BinopExprF Plus (BinopExpr Minus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Plus (LitI (b-r)) l
+
+    f (BinopExprF Minus (LitI l) (LitI r)) = LitI (l-r)
+    f (BinopExprF Minus l (LitI 0)) = l
+    -- Cases with parentheses
+    f (BinopExprF Minus (LitI b) (BinopExpr Minus (LitI l) r)) = simplifyExpr $ BinopExpr Plus (LitI (b-l)) r
+    f (BinopExprF Minus (LitI b) (BinopExpr Minus l (LitI r))) = simplifyExpr $ BinopExpr Minus (LitI (b+r)) l
+    f (BinopExprF Minus (BinopExpr Minus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Minus (LitI (l-b)) r
+    f (BinopExprF Minus (BinopExpr Minus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Minus l (LitI (b+r)) 
+
+    f (BinopExprF Minus (LitI b) (BinopExpr Plus (LitI l) r)) = simplifyExpr $ BinopExpr Minus (LitI (b-l)) r
+    f (BinopExprF Minus (LitI b) (BinopExpr Plus l (LitI r))) = simplifyExpr $ BinopExpr Minus (LitI (b-r)) l
+    f (BinopExprF Minus (BinopExpr Plus (LitI l) r) (LitI b)) = simplifyExpr $ BinopExpr Plus r (LitI (l-b))
+    f (BinopExprF Minus (BinopExpr Plus l (LitI r)) (LitI b)) = simplifyExpr $ BinopExpr Plus l (LitI (r-b))
+
+
+    f (BinopExprF Multiply (LitI l) (LitI r)) = LitI (l*r)
+    f (BinopExprF Multiply l (LitI 1)) = l
+    f (BinopExprF Multiply (LitI 1) r) = r
+    f (BinopExprF Multiply _ (LitI 0)) = LitI 0
+    f (BinopExprF Multiply (LitI 0) _) = LitI 0
+
+    f (BinopExprF Divide (LitI l) (LitI r)) | r == 1    = LitI l
+                                            | l == 0    = LitI l
+                                            | otherwise = BinopExpr Divide (LitI l) (LitI r)
+
+    f e = embed e
+
+simplifyTree :: ExecTree -> ExecTree
+simplifyTree (Node e t) = Node (simplifyStmt e) (map simplifyTree t)
+simplifyTree (Termination e) = Termination (simplifyStmt e)
+simplifyTree (LoopInv t1 t2 d1 d2) = LoopInv (simplifyTree t1) (simplifyTree t2) d1 d2
+
+simplifyStmt :: ExecStmt -> ExecStmt
+simplifyStmt (EAssert e) = EAssert (simplifyExpr e)
+simplifyStmt (EAssume e) = EAssume (simplifyExpr e)
+simplifyStmt (EAssign s e) = EAssign s (simplifyExpr e)
+simplifyStmt (EAAssign s e1 e2) = EAAssign s (simplifyExpr e1) (simplifyExpr e2)
+simplifyStmt (EDrefAssign s e) = EDrefAssign s (simplifyExpr e)
+simplifyStmt s = s
+
 
 progToExecMaxDepth :: Bool -> Int -> Program -> ExecTree
 progToExecMaxDepth checkInv d  = cut d . progToExec checkInv
