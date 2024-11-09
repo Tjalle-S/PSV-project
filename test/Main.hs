@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 import Cli (ArgData(..), HeuristicOptions(..))
 import Runner (run) 
 import Data.Bool (bool)
-import Test.Tasty.Options (IsOption(..), safeRead, safeReadBool, OptionDescription (..), lookupOption, setOption)
+import Test.Tasty.Options (IsOption(..), safeRead, safeReadBool, OptionDescription (..), lookupOption, setOption, mkFlagCLParser)
 import Data.Proxy (Proxy (..))
 import Test.Tasty.Runners (TestTree (AskOptions), NumThreads (NumThreads), parseOptions, tryIngredients)
 import Test.Tasty.Ingredients.ConsoleReporter (MinDurationToReport(MinDurationToReport))
@@ -35,6 +35,7 @@ instance IsOption Invariant where
   parseValue   = fmap Invariant . safeReadBool
   optionName   = pure "invariant"
   optionHelp   = pure "Detect annotated loop invariants"
+  optionCLParser = mkFlagCLParser mempty (Invariant True)
 
 main :: IO ()
 main = do
@@ -60,15 +61,6 @@ tests = AskOptions $ \opts ->
       , bgroup "Test Valid Programs"   (makeGroups makeValid   $ \n -> testCase n . makeAssertion True  args)
       , bgroup "Test Invalid Programs" (makeGroups makeInvalid $ \n -> testCase n . makeAssertion False args)
       ]
-
-
-
-
-  -- defaultMain
-  -- [ bgroup "Benchmarks" (makeGroups makeValid $ \n -> bench n . nfIO . getResultOf)
-  -- , bgroup "Test Valid Programs"   (makeGroups makeValid   $ \n -> testCase n . makeAssertion True)
-  -- , bgroup "Test Invalid Programs" (makeGroups makeInvalid $ \n -> testCase n . makeAssertion False)
-  -- ]
 
 -- Make a group of tests or benchmarks, with subgroups per program.
 makeGroups :: (String -> String) -> (String -> IO Program -> TestTree) -> [TestTree]
