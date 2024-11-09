@@ -7,8 +7,8 @@ import Statement ( ExecStmt(..), ExecTree(..), ExecTreeF(..) )
 
 import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
-import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs, ReaderData (options))
-import TreeBuilder (replace)
+import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs, ReaderData (options), applyWhen)
+import TreeBuilder (replace, simplifyExpr)
 import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, Result (..), local)
 import Z3Util (expr2ast)
 import Control.Monad.RWS (tell)
@@ -16,11 +16,11 @@ import Data.DList (singleton)
 import Data.Bool (bool)
 import Cli (ArgData(dumpConditions))
 
-prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
-prunedCalcWLP prune tree = cata f tree [] id 0
+prunedCalcWLP :: (MonadZ3 m, MonadG m) => Bool -> Int -> ExecTree -> m Bool
+prunedCalcWLP simp prune tree = cata f tree [] id 0
   where
     f (NodeF (EAssume e) r) as em d = do
-      let e' = em e
+      let e' = em (applyWhen simp simplifyExpr e)
       ast <- expr2ast e'
       let next = map (\g -> g (ast : as) em (d + 1)) r
       whenRs (dumpConditions . options) $ do
@@ -34,7 +34,7 @@ prunedCalcWLP prune tree = cata f tree [] id 0
           Unsat -> incrNumPruned >> return True
           _     -> error "Got undefined result from Z3"
       
-    f (NodeF s r) as em d = let next = map (\g -> g as (em . wlpStmt s) (d + 1)) r
+    f (NodeF s r) as em d = let next = map (\g -> g as (em . applyWhen simp simplifyExpr . wlpStmt s) (d + 1)) r
                             in testChildren next
     f (TerminationF s) as em _ = do
       incrNumPaths

@@ -3,6 +3,7 @@ module TreeBuilder (
 , badExpr2goodExpr
 , progToExec
 , progToExecMaxDepth
+, simplifyExpr
 , simplifyTree
 , stmtToExec) where --The last one should be temporarily
 

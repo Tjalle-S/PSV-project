@@ -1,5 +1,5 @@
-E ( x: int | y: int ) {
-  assume 3 - 2-1  < 3 - x - 1;
+E ( x: int, z: int | y: int ) {
+  assume 1 < x;
   while 0 < x do {
     x := x - 1
   };
