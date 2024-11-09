@@ -9,7 +9,7 @@ import Data.Functor.Foldable ( Recursive (cata), Corecursive (embed) )
 
 import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs)
 import TreeBuilder (replace)
-import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, Result (..), local)
+import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, Result (..), local, AST, Model)
 import Z3Util (expr2ast)
 import Control.Monad.RWS (tell)
 import Data.DList (singleton)
@@ -20,59 +20,58 @@ prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
 prunedCalcWLP prune tree = cata f tree [] id 0
   where
     f (NodeF (EAssert e) r) as em d = do
+      -- Check assertion, then ignore it afterwards.
       (_res, model) <- local $ do
-        let e' = em e
+        e' <- getTransformed em "assert: " e
         ast <- mkNot =<< expr2ast e'
-        whenRs dumpConditions $ do
-          tell (singleton $ "assert" ++ show e')
         assert =<< mkAnd (ast : as)
         getModel
-      case model of
-          -- No counterexample found, continue along this execution path.
-          Nothing -> let next = map (\g -> g as em (d + 1)) r
-                     in testChildren next
-          -- Counterexample found, stop here.
-          Just m -> do
-            ex <- showModel m
-            tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
-            return False
-
-
+      checkAssertions model (continue as em d r)
     f (NodeF (EAssume e) r) as em d = do
-      let e' = em e
+      e' <- getTransformed em "assume: " e
       ast <- expr2ast e'
-      let next = map (\g -> g (ast : as) em (d + 1)) r
-      whenRs dumpConditions $ do
-        tell (singleton $ show e')
-      if prune <= d then do testChildren next else do
+      -- Add the assumption to the list.
+      let continuation = continue (ast : as) em d r
+      if prune <= d then do continuation else do
         _res <- checkAssumptions (ast : as)
         case _res of
           -- Path is feasible, check further
-          Sat   -> testChildren next
+          Sat   -> continuation
           -- Path is infeasible, do not check further
           Unsat -> incrNumPruned >> return True
           _     -> error "Got undefined result from Z3"
-      
-    f (NodeF s r) as em d = let next = map (\g -> g as (em . wlpStmt s) (d + 1)) r
-                            in testChildren next
+    -- Add transformer to the composition.
+    f (NodeF s r) as em d = continue as (em . wlpStmt s) d r
+    -- End of path. Perform last transformation, then check assertions.
     f (TerminationF s) as em _ = do
       incrNumPaths
       local $ do
-        let e' = em (wlpStmt s $ LitB True)                                                                                      
+        e' <- getTransformed em "end: " (wlpStmt s $ LitB True)                                                                                     
         ast <- mkNot =<< expr2ast e'
-        whenRs dumpConditions $ do
-          tell (singleton $ show e')
         assert =<< mkAnd (ast : as)
         (_res, model) <- getModel
-        case model of
-          -- No counterexample found, check next WLP.
-          Nothing -> return True
-          -- Counterexample found, stop here.
-          Just m -> do
-            ex <- showModel m
-            tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
-            return False
+        checkAssertions model (return True)
     f (LoopInvF {}) _ _ _ = error "Unreachable: loop invariants removed after cut."
+
+-- | Get the result of the continuation along the path.
+continue :: Monad m => [AST] -> (Expr -> Expr) -> Int -> [[AST] -> (Expr -> Expr) -> Int -> m Bool] -> m Bool
+continue as em d = testChildren . map (\g -> g as em (d + 1))
+
+-- | Transform an expression, and print it if necessary.
+getTransformed :: (MonadG m) => (Expr -> Expr) -> String -> Expr -> m Expr
+getTransformed em t e = do 
+  let e' = em e 
+  whenRs dumpConditions $ tell (singleton $ t ++ show e')
+  return e'
+
+checkAssertions :: (MonadG m, MonadZ3 m) => Maybe Model -> m Bool -> m Bool
+-- No counterexample found. Continue or accept.
+checkAssertions Nothing  continuation = continuation
+-- Counterexample found. Print it and stop.
+checkAssertions (Just m) _            = do
+  ex <- showModel m
+  tell (singleton $ unlines ["Reject\n", "Variable assignments:", ex])
+  return False
 
 testChildren :: Monad m => [m Bool] -> m Bool
 testChildren []         = return True
@@ -89,7 +88,6 @@ wlpStmt (EAAssign s i e)  = cata f
     f (VarF s' t) = replaceVar s' (RepBy (Var s t) i e) s t
     f e' = embed e'
 wlpStmt (EDrefAssign _ _) = optionalError -- Reference types.
--- wlpStmt EBlock = error "TODO"
 
 replaceVar :: [Char] -> Expr -> [Char] -> Type -> Expr
 replaceVar s1 e s2 t| s1==s2 = e
