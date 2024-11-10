@@ -41,8 +41,6 @@ getValidityCounterExample as ast = do
   case res of
     Sat -> Just <$> (showModel =<< solverGetModel)
     _   -> return Nothing
-    -- Nothing -> return Nothing
-    -- Just m  -> Just <$> showModel m
 
 -- ============================================================
 

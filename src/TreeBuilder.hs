@@ -293,19 +293,8 @@ replaceVars e v by = cata f e
 loopInvariant::Expr->Expr->ExecTree->ExecTree->Decls->Decls->ExecTree
 loopInvariant inv c b _T assigned newvars = Node (EAssert inv) [LoopInv validInv rest assigned newvars]
   where
-      --initInv = Termination $ EAssert inv
       validInv = foldr1 treeConcat [Termination $ EAssume (BinopExpr And inv c),b, Termination $  EAssert inv]
-      --validInv'= ReplaceVars validInv assigned newvars
       rest = Node (EAssume (BinopExpr And inv (OpNeg c))) [_T]
-      --rest' = ReplaceVars rest assigned newvars
-
---    replaceVw0wars Skip vars by = Skip
---    replaceVars (Assert e) ((v,t):vars) (b:by) = Assert $ embed (replace v undefined undefined)
-
-
-                                    -- stmtToExec s--Still has to replace all the occurences of the changed variables
-
--- blockToExec :: [Expr -> Expr]
 
 -- | Replace any occurrence of given variable by another expression.
 --
