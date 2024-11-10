@@ -3,7 +3,7 @@
 module Runner (run) where
 
 import GCLParser.GCLDatatype (Program)
-import Cli( ArgData(..), pruneInfeasible, HeuristicOptions(checkInvariant), simplifyExpressions )
+import Cli( ArgData(..), pruneInfeasible, HeuristicOptions(checkInvariant) )
 import WLP (prunedCalcWLP)
 import TreeBuilder (progToExecMaxDepth)
 import Util (runV, Log, VState)
@@ -14,7 +14,6 @@ run :: MonadIO m => ArgData -> Program -> m (Bool, VState, Log)
 run args prog = liftIO $ runV
   args
   (prunedCalcWLP
-    (simplifyExpressions (enabledHeuristics args))
     (pruneInfeasible (enabledHeuristics args)) $
     progToExecMaxDepth
       (checkInvariant (enabledHeuristics args))

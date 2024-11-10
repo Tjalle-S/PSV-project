@@ -11,24 +11,24 @@ import Util ( optionalError, MonadG, incrNumPaths, incrNumPruned, whenRs, applyW
 import TreeBuilder (replace, simplifyExpr)
 import Z3.Monad (MonadZ3, mkNot, mkAnd, assert, getModel, showModel, checkAssumptions, Result (..), local, AST, Model)
 import Z3Util (expr2ast)
-import Control.Monad.RWS (tell)
+import Control.Monad.RWS (tell, asks)
 import Data.DList (singleton)
 import Data.Bool (bool)
-import Cli (ArgData(dumpConditions))
+import Cli (ArgData(dumpConditions, enabledHeuristics), HeuristicOptions (simplifyExpressions))
 
-prunedCalcWLP :: (MonadZ3 m, MonadG m) => Bool -> Int -> ExecTree -> m Bool
-prunedCalcWLP simp prune tree = cata f tree [] id 0
+prunedCalcWLP :: (MonadZ3 m, MonadG m) => Int -> ExecTree -> m Bool
+prunedCalcWLP prune tree = cata f tree [] id 0
   where
     f (NodeF (EAssert e) r) as em d = do
       -- Check assertion, then ignore it afterwards.
       (_res, model) <- local $ do
-        e' <- getTransformed em "assert: " (applyWhen simp simplifyExpr e)
+        e' <- getTransformed em "assert: " e
         ast <- mkNot =<< expr2ast e'
         assert =<< mkAnd (ast : as)
         getModel
       checkAssertions model (continue as em d r)
     f (NodeF (EAssume e) r) as em d = do
-      e' <- getTransformed em "assume: " (applyWhen simp simplifyExpr e)
+      e' <- getTransformed em "assume: " e
       ast <- expr2ast e'
       -- Add the assumption to the list.
       let continuation = continue (ast : as) em d r
@@ -41,7 +41,7 @@ prunedCalcWLP simp prune tree = cata f tree [] id 0
           Unsat -> incrNumPruned >> return True
           _     -> error "Got undefined result from Z3"
     -- Add transformer to the composition.
-    f (NodeF s r) as em d = continue as (em . applyWhen simp simplifyExpr . wlpStmt s) d r
+    f (NodeF s r) as em d = continue as (em . wlpStmt s) d r
     -- End of path. Perform last transformation, then check assertions.
     f (TerminationF s) as em _ = do
       incrNumPaths
@@ -59,8 +59,9 @@ continue as em d = testChildren . map (\g -> g as em (d + 1))
 
 -- | Transform an expression, and print it if necessary.
 getTransformed :: (MonadG m) => (Expr -> Expr) -> String -> Expr -> m Expr
-getTransformed em t e = do 
-  let e' = em e 
+getTransformed em t e = do
+  simp <- asks (simplifyExpressions . enabledHeuristics)
+  let e' = applyWhen simp simplifyExpr $ em e 
   whenRs dumpConditions $ tell (singleton $ t ++ show e')
   return e'
 
