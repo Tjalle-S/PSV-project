@@ -1,12 +1,4 @@
-# INFOMPSV project template
-
-This template includes a dev container configuration, as well as the Haskell code for a project with z3 and the GCL parser.  
-The dev container provides all necessary dependencies for working on the project: z3 and Haskell tooling.
-
-An example for using z3 is also included. More examples can be found [here](https://github.com/IagoAbal/haskell-z3/tree/master/examples).
-
-## Using the dev container
-
+# Using the dev container
 Prerequisites:
 - [Docker](https://www.docker.com/) is installed and running.
 - The [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for [Visual Studio Code (VSCode)](https://code.visualstudio.com/) is installed.
@@ -14,15 +6,41 @@ Prerequisites:
 When opening this folder in VSCode, a popup should appear prompting you to reopen the folder in a dev container. If not, this can be done by pressing <kbd>F1</kbd> and finding the command `Dev Containers: Reopen in Container`.  
 Now, the container will start to build. The first time, this may take a while.
 
-When the container is finished building, this same folder will be opened inside the container. Now, you can start working on the project like normal.
+# Using GLEE
+For the remainder of the documentation, I will assume the dev container is used.
 
-## Notes on HLS
+## Installation
+The program first needs to be built. Simply run the command
+```
+$ cabal install --overwrite-policy=always
+```
+in the root folder. This builds the prorgam and puts in on PATH so it can easily be used.
+You can check if this step was successful by running the following command, and see if the output matches:
+```
+$ glee --version
+The (Glorious) GCL Logical Execution Engine, version 1.0.0
+```
 
-Whenever the cabal file is changed (`wlp-verifier.cabal` in this template), the project needs to be rebuilt (`cabal build`) for HLS to notice these changes.
+## Usage
+To run the program on a GCL program, run the command
+```
+$ glee <file> -k <depth>
+```
+This will verify all execution paths of length up to `k` of the program in the specified file.<sup>[1](#benchmarkFootnote)</sup>
 
-Unfortunately, Haskell tooling is always somewhat unstable. This particular version requires `Main.hs` to always be open.  
-If the language support is not working properly, try the following:
-1. Check if it is still busy setting up. With a cabal project, this may take a bit of time.
-2. (Re)open `Main.hs` if you see any errors, or if it is not doing anything at all.
-3. If it is still not working, restart HLS. (<kbd>F1</kbd> -> `Haskell: Restart Haskell LSP Server`).
-4. If this all fails, leave the dev container and reopen it.
+
+Optimisations can be enabled using the following flags:
+- `-p <depth>`: check for infeasible paths, up to the specified depth.
+- `-e`: perform front-end simplification of expressions.
+- `-i`: detect annotated loop invariants, and try to prove these.
+
+Additionally, some statistics can be reported using the flag `-s`.
+
+For more information, you can use
+```
+$ glee --help
+```
+
+--------------------
+
+<a name="benchmarkFootnote">1</a>: Note that the benchmark programs cannot be used directly, since the parameter N needs to be replaced. This is done by the test program.
